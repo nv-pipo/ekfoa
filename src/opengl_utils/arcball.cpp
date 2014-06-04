@@ -183,6 +183,6 @@ void Arcball::reset()
 }
 
 
-const float Arcball::INITIAL_FOV = 60;
+const float Arcball::INITIAL_FOV = 30;
 const float Arcball::TRANSLATION_FACTOR = 0.01f;
 
