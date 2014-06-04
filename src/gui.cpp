@@ -195,7 +195,7 @@ bool Gui::redraw(){
     glPointSize(2.0);
     glColor3f(0.f, 0.f, 1.f);
     glBegin(GL_POINTS);
-    for (int i=0 ; i<trajectory.size() ; i++){
+    for (size_t i=0 ; i<trajectory.size() ; i++){
     	glVertex3f(trajectory[i](0), trajectory[i](1), trajectory[i](2));
     }
     glEnd();
