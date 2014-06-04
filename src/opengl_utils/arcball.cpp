@@ -6,7 +6,7 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
-#include "Arcball.hpp"
+#include "arcball.hpp"
 
 using namespace std;
 using namespace Eigen;
@@ -162,19 +162,19 @@ void Arcball::reset()
    // reset matrix
    memset(startMatrix, 0, sizeof(startMatrix));
    startMatrix[0] = 1;
-   startMatrix[1] =0;
+   startMatrix[1] = 0;
    startMatrix[2] = 0;
    startMatrix[3] = 0;
    startMatrix[4] = 0;
-   startMatrix[5] =1;
+   startMatrix[5] = 1;
    startMatrix[6] = 0;
    startMatrix[7] = 0;
    startMatrix[8] = 0;
-   startMatrix[9] =0;
+   startMatrix[9] = 0;
    startMatrix[10] = 1;
    startMatrix[11] = 0;
    startMatrix[12] = 0;
-   startMatrix[13] =0;
+   startMatrix[13] = 0;
    startMatrix[14] = 0;
    startMatrix[15] = 1;
 
@@ -183,6 +183,6 @@ void Arcball::reset()
 }
 
 
-const float Arcball::INITIAL_FOV = 30;
+const float Arcball::INITIAL_FOV = 60;
 const float Arcball::TRANSLATION_FACTOR = 0.01f;
 
