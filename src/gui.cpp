@@ -189,6 +189,7 @@ bool Gui::redraw(){
     // Move back
     glTranslatef(0.0, 0.0, -zoom_);
     // Rotate the view
+    glRotatef(180, 1, 0, 0);//TODO: integrate this rotation to the arcball.
     arcball_.applyRotationMatrix();
 
     //Draw trajectory:
