@@ -158,7 +158,7 @@ void Gui::framebuffer_size_callback(GLFWwindow* window, int width, int height){
     // Change to the projection matrix and set our viewing volume
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluPerspective(60.0, ratio, 1.0, 1024.0);
+    gluPerspective(120.0, ratio, 0.3f, 1024.0);
 }
 
 
