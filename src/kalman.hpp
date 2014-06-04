@@ -28,8 +28,8 @@ public:
 		x_k_k_(index) = value;
 	}
 	void update( const Camera & cam, const std::vector<Observation> & observations );
-	Eigen::VectorXd x_k_k() { return x_k_k_; }
-	Eigen::MatrixXd p_k_k() { return p_k_k_; }
+	Eigen::VectorXd x_k_k() const { return x_k_k_; }
+	Eigen::MatrixXd p_k_k() const { return p_k_k_; }
 
 private:
 

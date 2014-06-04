@@ -20,21 +20,13 @@ Kalman::Kalman(double v_0, double std_v_0, double w_0, double std_w_0, double si
 			w_0, //Angular Velocity Y
 			w_0; //Angular Velocity Z
 
-	double eps = 1/pow(2, 52); //TODO: I'm guessing that EPS is used to refer to the smallest number that can be produced and is not zero.
-	//	p_k_k(0,0) = std::numeric_limits<double>::min();
-	//	p_k_k(1,1) = std::numeric_limits<double>::min();
-	//	p_k_k(2,2) = std::numeric_limits<double>::min();
-	//	p_k_k(3,3) = std::numeric_limits<double>::min();
-	//	p_k_k(4,4) = std::numeric_limits<double>::min();
-	//	p_k_k(5,5) = std::numeric_limits<double>::min();
-	//	p_k_k(6,6) = std::numeric_limits<double>::min();
-	p_k_k_(0,0) = eps;
-	p_k_k_(1,1) = eps;
-	p_k_k_(2,2) = eps;
-	p_k_k_(3,3) = eps;
-	p_k_k_(4,4) = eps;
-	p_k_k_(5,5) = eps;
-	p_k_k_(6,6) = eps;
+	p_k_k_(0,0) = std::numeric_limits<double>::min();
+	p_k_k_(1,1) = std::numeric_limits<double>::min();
+	p_k_k_(2,2) = std::numeric_limits<double>::min();
+	p_k_k_(3,3) = std::numeric_limits<double>::min();
+	p_k_k_(4,4) = std::numeric_limits<double>::min();
+	p_k_k_(5,5) = std::numeric_limits<double>::min();
+	p_k_k_(6,6) = std::numeric_limits<double>::min();
 	p_k_k_(7,7) = std_v_0*std_v_0;
 	p_k_k_(8,8) = std_v_0*std_v_0;
 	p_k_k_(9,9) = std_v_0*std_v_0;
@@ -66,7 +58,7 @@ void Kalman::delete_features(std::vector<int> & delete_list){
 	int new_size = x_k_k_.rows();
 
 	//Start deleting from the last feature to be deleted (simplifies and optimizes the way it is done):
-	for(int i = delete_list.size()-1; i >= 0; i--) {
+	for(int i = ((int)delete_list.size())-1; i >= 0; i--) {
 		unsigned int start_dst = 13 + delete_list[i]*6; //the feature to be delete starts at: xv_size + feature_index*6.
 		unsigned int start_src = start_dst + 6; //next feature starts at 'start_dst + 6'
 		unsigned int size_rest = x_k_k_.rows() - start_src; //relevant size minus space that does not need to change
@@ -95,7 +87,6 @@ void Kalman::predict_state_and_covariance(const double delta_t){
 	Eigen::MatrixXd F;
 	Eigen::MatrixXd Q;
 	MotionModel::prediction_step(delta_t, std_a_, std_alpha_, x_k_k_, F, Q);
-
 
 	//Update the covariance matrix as follows:
 	//  size_P_k = size(P_k,1);

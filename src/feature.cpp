@@ -23,9 +23,28 @@ bool Feature::compute_h( const Camera & cam, const Eigen::Vector3d & rW, const E
 	return true;
 }
 
+void Feature::compute_cartesian( const Eigen::VectorXd & yi, Eigen::Vector3d & XYZ ){
+	//TODO: Asserts
+
+	const Eigen::VectorXd & yi_rW = yi.head(3); //camera orientation when it was first seen.
+	double theta = yi(3);
+	double phi = yi(4);
+	double rho = yi(5);
+
+	Eigen::Vector3d mi;
+	Feature::compute_m( theta, phi, mi );
+
+	XYZ(0) = yi_rW(0) + (1/rho)*mi(0);
+	XYZ(1) = yi_rW(1) + (1/rho)*mi(1);
+	XYZ(2) = yi_rW(2) + (1/rho)*mi(2);
+
+//	XYZ = yi_rW + (1/rho)*mi;
+
+}
+
 Eigen::Vector3d Feature::compute_unshifted_3d_position( const Eigen::Vector3d & rW, const Eigen::VectorXd & yi){
 
-	Eigen::Vector3d yi_rW = yi.head<3>(); //camera orientation when it was first seen.
+	const Eigen::Vector3d & yi_rW = yi.head<3>(); //camera orientation when it was first seen.
 	double theta = yi(3);
 	double phi = yi(4);
 	double rho = yi(5);
