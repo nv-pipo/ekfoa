@@ -1,5 +1,4 @@
 
-#include <thread>         // std::thread
 #include <boost/thread.hpp>   // boost::thread
 
 #include "gui.hpp"
