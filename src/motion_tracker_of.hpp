@@ -29,7 +29,6 @@ private:
 	std::vector<cv::Point2f> points_tracked_2;
 	std::vector<cv::Point2f> points_tracked_1_reverse;
 
-	std::vector<uchar> status_fundamental_; // status of fundamental matrix
 	std::vector<uchar> status_of_; // status of tracked features (Optical Flow)
 	std::vector<uchar> status_of_reverse_; // status of tracked features (Optical Flow second)
 	std::vector<float> err;    // error of tracked features (Optical Flow)

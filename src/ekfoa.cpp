@@ -126,7 +126,7 @@ void EKFOA::start(){
 		cv::Mat bigger;
 		cv::resize(frame, bigger, cv::Size(frame.size().width*2, frame.size().height*2));
 
-		cv::imshow("bla", bigger);
+//		cv::imshow("bla", bigger);
 		//Notify the gui of the new state:
 		Gui::update_state_and_cov(filter.x_k_k(), filter.p_k_k(), frame, triangulation);
 
