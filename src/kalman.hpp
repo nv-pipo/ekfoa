@@ -5,9 +5,11 @@
 #include "camera.hpp"   //Feature
 #include "motion_model.hpp"   //Motion model
 #include "print.hpp"
-#include "observation.hpp"
 
 #include <Eigen/Dense> //Matrix
+
+#include <opencv2/opencv.hpp> //opencv
+
 
 #include <Eigen/Core>  //Derived
 #include <Eigen/Eigen> //math
@@ -27,7 +29,7 @@ public:
 	void set_state_position_value( const int index, const double value ){
 		x_k_k_(index) = value;
 	}
-	void update( const Camera & cam, const std::vector<Observation> & observations );
+	void update( const Camera & cam, const std::vector<cv::Point2f> & features_observations );
 	Eigen::VectorXd x_k_k() const { return x_k_k_; }
 	Eigen::MatrixXd p_k_k() const { return p_k_k_; }
 

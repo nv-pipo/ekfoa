@@ -2,21 +2,24 @@
 #include "ekfoa.hpp"
 
 EKFOA::EKFOA() :
-	cam(Camera(
+cam(Camera(
+		//Sample
 		0.0112,	  		    //d
 		1.7945 / 0.0112,  //Cx
 		1.4433 / 0.0112,  //Cy
 		6.333e-2, //k1
 		1.390e-2, //k2
 		2.1735   			//f
-		//			0.0112,	  		    //d
-		//			342.5598894437880,  //Cx
-		//			173.0343808455040,  //Cy
-		//			0.0028450345588019, //k1
-		//			0.0000000000000222, //k2
-		//			2.1735   			//f
-		)),
-	filter(Kalman(
+
+		//ARDRONE:
+//		0.0112,	  		    //d
+//		342.5598894437880,  //Cx
+//		173.0343808455040,  //Cy
+//		0.0028450345588019, //k1
+//		0.0000000000000222, //k2
+//		2.1735   			//f
+)),
+filter(Kalman(
 		0.0,   //v_0
 		0.025, //std_v_0
 		1e-15, //w_0
@@ -24,11 +27,11 @@ EKFOA::EKFOA() :
 		0.007, //standar deviation for linear acceleration noise
 		0.007, //standar deviation for angular acceleration noise
 		1.0    //standar deviation for measurement noise
-		)),
-	motion_tracker(MotionTrackerOF(
-		100, //min_number_of_features_in_image
+)),
+motion_tracker(MotionTrackerOF(
+		30, //min_number_of_features_in_image
 		20  //distance_between_points
-		)) {
+)) {
 
 }
 
@@ -37,18 +40,15 @@ void EKFOA::start(){
 
 	double time;
 
-//	cv::namedWindow("OF");
-//	cv::moveWindow("OF", 1000, 100);
-//	cv::namedWindow("MASK");
-//	cv::moveWindow("MASK", 1000, 600);
-
 	//Sequence path and initial image
 	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/ekfmonoslam/rawoutput";
-//		std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/ardrone/heldIndoors2/img";
-	int initIm = 0;
-	int lastIm = 999;
+//	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/ardrone/heldIndoors2/img";
+	int initIm = 90;
+	int lastIm = 2000;
 
 	char file_path[255]; // enough to hold all numbers up to 64-bits
+
+
 	for (int step=initIm+1 ; step<lastIm ; step++){
 		std::cout << "step: " << step << std::endl;
 
@@ -61,43 +61,76 @@ void EKFOA::start(){
 		std::cout << "predict = " << time/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
 
 		//Sense environment (process frame)
-		Eigen::MatrixXd features_new_uvds;
-		std::vector<int> features_to_remove_sorted_idx;
-		std::vector<Observation> features_observations;
+		Eigen::MatrixXd features_to_add;
+		std::vector<int> features_to_remove;
+		std::vector<cv::Point2f> features_tracked;
 		sprintf(file_path, "%s%04d.pgm", sequence_prefix.c_str(), step);
 //		sprintf(file_path, "%s%03d.png", sequence_prefix.c_str(), step);
-		//		std::cout << "file_path: " <<  file_path << std::endl;
 		frame = cv::imread(file_path, CV_LOAD_IMAGE_COLOR);   // Read the file
 
 		time = (double)cv::getTickCount();
-		motion_tracker.process(frame, features_new_uvds, features_observations, features_to_remove_sorted_idx);
+		motion_tracker.process(frame, features_to_add, features_tracked, features_to_remove);
+		//TODO: Why is optical flow returning points outside the image???
 		time = (double)cv::getTickCount() - time;
 		std::cout << "tracker = " << time/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
-//		cv::imshow("OF", frame);
-//		cv::waitKey(10);
 
 		//Delete no longer seen features
 		time = (double)cv::getTickCount();
-		filter.delete_features( features_to_remove_sorted_idx );
+		filter.delete_features( features_to_remove );
 		time = (double)cv::getTickCount() - time;
 		std::cout << "delete = " << time/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
 
+
 		//EKF Update step
 		time = (double)cv::getTickCount();
-		filter.update(cam, features_observations);
+		filter.update(cam, features_tracked);
 		time = (double)cv::getTickCount() - time;
 		std::cout << "update = " << time/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
 
 		//Add new features
 		time = (double)cv::getTickCount();
-		filter.add_features_inverse_depth( cam, features_new_uvds );
+		filter.add_features_inverse_depth( cam, features_to_add );
 		time = (double)cv::getTickCount() - time;
 		std::cout << "add_features = " << time/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
 
+
+		time = (double)cv::getTickCount();
+		std::vector< std::pair<Point, size_t> > triangle_list;
+
+		const Eigen::MatrixXd & p_k_k = filter.p_k_k();
+		const Eigen::VectorXd & x_k_k = filter.x_k_k();
+
+		for (int feature_idx=0 ; feature_idx<features_tracked.size() ; feature_idx++){
+			int feature_depth_index = 13 + feature_idx*6 + 5;
+			if (p_k_k(feature_depth_index, feature_depth_index) < 0.1 && x_k_k(feature_depth_index) > 0)//TODO: Do this nicely...using sigmas.
+				triangle_list.push_back( std::make_pair( Point(features_tracked[feature_idx].x, features_tracked[feature_idx].y), feature_idx));
+			if (x_k_k(feature_depth_index) < 0 ){
+				std::cout << "darn!!! : idx=" << feature_depth_index << ", value=" << x_k_k(feature_depth_index) << std::endl;
+				std::cin.ignore(1);
+			}
+		}
+
+		Delaunay triangulation(triangle_list.begin(), triangle_list.end());
+		cv::Scalar delaunay_color = cv::Scalar(255, 0, 0); //blue
+		for(Delaunay::Finite_faces_iterator fit = triangulation.finite_faces_begin(); fit != triangulation.finite_faces_end(); ++fit) {
+			const Delaunay::Face_handle & face = fit;
+			//face->vertex(i)->info() = index of the point in the observation list.
+			line(frame, features_tracked[face->vertex(0)->info()], features_tracked[face->vertex(1)->info()], delaunay_color, 1);
+			line(frame, features_tracked[face->vertex(1)->info()], features_tracked[face->vertex(2)->info()], delaunay_color, 1);
+			line(frame, features_tracked[face->vertex(2)->info()], features_tracked[face->vertex(0)->info()], delaunay_color, 1);
+		}
+
+		time = (double)cv::getTickCount() - time;
+		std::cout << "delaunay = " << time/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
+
+		cv::Mat bigger;
+		cv::resize(frame, bigger, cv::Size(frame.size().width*2, frame.size().height*2));
+
+		cv::imshow("bla", bigger);
 		//Notify the gui of the new state:
-		Gui::update_state_and_cov(filter.x_k_k(), filter.p_k_k());
+		Gui::update_state_and_cov(filter.x_k_k(), filter.p_k_k(), frame, triangulation);
 
 		//PAUSE:
-		std::cin.ignore(1);
+//		std::cin.ignore(1);
 	}
 }

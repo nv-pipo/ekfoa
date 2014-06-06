@@ -244,9 +244,9 @@ void Kalman::add_a_feature_state_inverse_depth( const Eigen::VectorXd & XYZ_w, c
  * update:
  * With the camera parameters and observations (mapped to the current state features) it corrects the state and covariance matrix of the EKF.
  */
-void Kalman::update( const Camera & cam, const std::vector<Observation> & observations ){
+void Kalman::update( const Camera & cam, const std::vector<cv::Point2f> & features_observations ){
 	//Return if there were no observations:
-	if (observations.size() == 0)
+	if (features_observations.size() == 0)
 		return;
 
 	Eigen::Vector3d rW = x_k_k_.head(3); //current camera position
@@ -256,29 +256,27 @@ void Kalman::update( const Camera & cam, const std::vector<Observation> & observ
 
 	std::vector<Eigen::Vector2d> list_h;
 	std::vector<Eigen::MatrixXd> list_H;
-	int num_observations = 0;
 
 	//compute 'h' and its Jacobian 'H':
-	for(size_t i = 0; i != observations.size(); i++) {
-		int yi_start_pos = observations[i].feature_idx * 6 + 13;
+	for(size_t yi_start_pos = 13; yi_start_pos < x_k_k_.rows(); yi_start_pos+=6) {
+
 		Eigen::VectorXd yi = x_k_k_.segment(yi_start_pos, 6); //feature_state
 		Eigen::Vector2d hi; //this feature state estimation represented in image coordinates
 		Eigen::MatrixXd Hi; //this feature derivative against the current state (x_k_k)
 
 		Feature::compute_h( cam, rW, qWR_rotation_matrix, yi, hi );
 		Feature::compute_H( cam, rW, qWR, qWR_rotation_matrix, x_k_k_, yi, yi_start_pos, hi, Hi );
-		num_observations++;
 		list_h.push_back(hi);
 		list_H.push_back(Hi);
 	}
 
-	Eigen::VectorXd z(num_observations*2); //each observation uses 2 doubles, for U and V.
-	Eigen::VectorXd h(num_observations*2); //each observation uses 2 doubles, for the predicted U and V.
-	Eigen::MatrixXd H(num_observations*2, x_k_k_.rows());
+	Eigen::VectorXd z(features_observations.size()*2); //each observation uses 2 doubles, for U and V.
+	Eigen::VectorXd h(features_observations.size()*2); //each observation uses 2 doubles, for the predicted U and V.
+	Eigen::MatrixXd H(features_observations.size()*2, x_k_k_.rows());
 	Eigen::MatrixXd R;
-	R.setIdentity(num_observations*2, num_observations*2);
+	R.setIdentity(features_observations.size()*2, features_observations.size()*2);
 	for (size_t i = 0; i != list_h.size(); i++) {
-		z.segment(i*2, 2) = observations[i].uvd;
+		z.segment(i*2, 2) = Eigen::Vector2d(features_observations[i].x, features_observations[i].y);
 		h.segment(i*2, 2) = list_h[i];
 		H.block(i*2, 0, 2, x_k_k_.rows()) = list_H[i];
 	}

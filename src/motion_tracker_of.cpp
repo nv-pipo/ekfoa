@@ -4,7 +4,7 @@ std::string MotionTrackerOF::type(){
 	return std::string("OF");
 }
 
-void MotionTrackerOF::process(cv::Mat & input_2, Eigen::MatrixXd & features_new_uvds, std::vector<Observation> & features_tracked, std::vector<int> & features_to_remove_list){
+void MotionTrackerOF::process(cv::Mat & input_2, Eigen::MatrixXd & features_added, std::vector<cv::Point2f> & features_tracked, std::vector<int> & features_removed){
 	// '1' refers to previous frame
 	// '2' refers to last received (input parameter) frame
 
@@ -13,8 +13,7 @@ void MotionTrackerOF::process(cv::Mat & input_2, Eigen::MatrixXd & features_new_
 		points_correctly_tracked_mask_ = cv::Mat(input_2.size(), CV_8UC1);
 	}
 
-	std::vector<cv::Point2f> points_correctly_tracked;
-	points_correctly_tracked.reserve(min_number_of_features_in_image_); //Don't want a lot of reallocations later, so reserve to the maximum
+	features_tracked.reserve(min_number_of_features_in_image_); //Don't want a lot of reallocations later, so reserve to the maximum
 	points_correctly_tracked_mask_.setTo(cv::Scalar(255));
 
 //	double time = 0;
@@ -27,6 +26,7 @@ void MotionTrackerOF::process(cv::Mat & input_2, Eigen::MatrixXd & features_new_
 	if (points_tracked_1.size() > 0) {
 //		time = (double)cv::getTickCount();
 
+		//TODO: Use 'OPTFLOW_USE_INITIAL_FLOW' with the kalman filter prediction. So that the estimations are considered the initial estimate
 		// Find position of feature in new image
 		cv::calcOpticalFlowPyrLK(
 				input_1_gray_, input_2_gray, // 2 consecutive images
@@ -48,24 +48,24 @@ void MotionTrackerOF::process(cv::Mat & input_2, Eigen::MatrixXd & features_new_
 
 		cv::Scalar color;
 
+		int idx_removed_of = 0;
 		for(size_t idx=0; idx < points_tracked_1.size() ; idx++) {
 			color = cv::Scalar(0, 0, 255, 255);//red
 
 			if (accept_tracked_point(idx)){
 				//Could track it!, so add current position as sensed input:
-				//(Note: remember that we have deleted some features already)
-				Observation observation = {idx-features_to_remove_list.size(), Eigen::Vector2d(points_tracked_2[idx].x, points_tracked_2[idx].y)};
-				features_tracked.push_back(observation);
-
-				color = cv::Scalar(0, 255, 0, 255);//green
-				points_correctly_tracked.push_back(points_tracked_2[idx]);
+				features_tracked.push_back(points_tracked_2[idx]);
 
 				//make sure new features are not above or too close to this feature:
 				cv::circle(points_correctly_tracked_mask_, points_tracked_2[idx], distance_between_points_, cv::Scalar(0), CV_FILLED);
+
+				//color it in  the frame as green:
+				color = cv::Scalar(0, 255, 0, 255);//green
 			} else {
 				//could not track it, so mark for removal it:
-				features_to_remove_list.push_back(idx);
+				features_removed.push_back(idx);
 			}
+
 
 			//Draw circle at current position:
 			cv::circle(input_2, points_tracked_2[idx], 3, color, 1);
@@ -75,24 +75,24 @@ void MotionTrackerOF::process(cv::Mat & input_2, Eigen::MatrixXd & features_new_
 					points_tracked_1[idx],   // initial position
 					points_tracked_2[idx],   // new position
 					color);
+
 		}
 
 		//Finally, remember the correctly tracked points (for next call):
-		points_tracked_1 = points_correctly_tracked;
+		points_tracked_1 = features_tracked;
 	}
 
-	int num_new_features = min_number_of_features_in_image_ - points_correctly_tracked.size();
+	int num_new_features = min_number_of_features_in_image_ - features_tracked.size();
 
 	if (num_new_features > 0){
 		//TODO: Try to use some FAST heuristics to prefer unoccupied areas for new features...like a grid and one feature per square.
-//		cv::imshow("MASK", points_correctly_tracked_mask_);
 //		time = (double)cv::getTickCount();
-		std::vector<cv::Point2f> points_new_opencv;
+		std::vector<cv::Point2f> features_added_cv;
 		cv::goodFeaturesToTrack(
 				input_2_gray,      // InputArray image
-				points_new_opencv, // OutputArray corners
+				features_added_cv, // OutputArray corners
 				num_new_features,  // int maxCorners - Number of points to detect
-				0.01,              // double qualityLevel=0.01 (larger is better quality)
+				0.1,              // double qualityLevel=0.01 (larger is better quality)
 				distance_between_points_, // double minDistance=1
 				points_correctly_tracked_mask_,    // InputArray mask=noArray(). Where it should not look for new features
 				3,              // int blockSize=3
@@ -100,12 +100,12 @@ void MotionTrackerOF::process(cv::Mat & input_2, Eigen::MatrixXd & features_new_
 				0.04              // double k=0.04
 		);
 		//Add new points to the currently tracked features at the beginning:
-		points_tracked_1.insert(points_tracked_1.end(), points_new_opencv.begin(), points_new_opencv.end());
+		points_tracked_1.insert(points_tracked_1.end(), features_added_cv.begin(), features_added_cv.end());
 
 		//Copy to the "returned" list of new features:
-		features_new_uvds.resize(2, points_new_opencv.size());
-		for (size_t i=0 ; i<points_new_opencv.size() ; i++){
-			features_new_uvds.col(i) << points_new_opencv[i].x, points_new_opencv[i].y;
+		features_added.resize(2, features_added_cv.size());
+		for (size_t i=0 ; i<features_added_cv.size() ; i++){
+			features_added.col(i) << features_added_cv[i].x, features_added_cv[i].y;
 		}
 
 //		time = (double)cv::getTickCount() - time;

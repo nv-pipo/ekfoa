@@ -11,7 +11,7 @@ public:
 
 	std::string type();
 
-	void process(cv::Mat & input_2, Eigen::MatrixXd & features_new_uvds, std::vector<Observation> & features_tracked, std::vector<int> & features_to_remove_list);
+	void process(cv::Mat & input_2, Eigen::MatrixXd & features_added, std::vector<cv::Point2f> & features_tracked, std::vector<int> & features_removed);
 
 	~MotionTrackerOF(){}
 private:
