@@ -5,6 +5,8 @@
 #include <Eigen/Core>  //Derived
 #include <iostream> //cin, cout
 
+
+void print_e100(Eigen::MatrixXd var, std::string output_filename);
 void print_e16(Eigen::MatrixXd var);
 void print_d(Eigen::MatrixXd var);
 
