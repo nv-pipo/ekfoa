@@ -8,7 +8,7 @@
 #include <GL/glu.h>
 #include <GLFW/glfw3.h>
 
-#include <opencv2/opencv.hpp> //opencv
+#include <opencv2/core/core.hpp> //Point2f
 
 #include <vector>   //vector
 #include <Eigen/Core>  //Eigen::Vector3d

@@ -5,7 +5,7 @@
 
 #include <iostream> //cout
 #include <vector>   //vector
-#include <opencv2/opencv.hpp> //opencv
+#include <opencv2/highgui/highgui.hpp> //imread
 
 //HOME DIR:
 #include <unistd.h>

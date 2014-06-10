@@ -60,7 +60,7 @@ void MotionTrackerOF::process(cv::Mat & input_2, Eigen::MatrixXd & features_adde
 			}
 		}
 
-		findFundamentalMat(p1, p2, cv::FM_RANSAC, 0.5, 0.99, status_ransac);
+		cv::findFundamentalMat(p1, p2, cv::FM_RANSAC, 0.5, 0.99, status_ransac);
 
 		cv::Scalar color;
 
@@ -103,7 +103,7 @@ void MotionTrackerOF::process(cv::Mat & input_2, Eigen::MatrixXd & features_adde
 			std::stringstream text;
 			text << idx;
 			cv::Point2f text_start(p2[idx].x+5, p2[idx].y+5);
-			putText(input_2, text.str(), text_start, cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(255, 0, 255));
+			cv::putText(input_2, text.str(), text_start, cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(255, 0, 255));
 		}
 
 		//Add any remaining features removed by Optical Flow:

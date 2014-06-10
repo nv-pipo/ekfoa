@@ -96,20 +96,20 @@ class Arcball
 {
 private:
    float fov;
-   int fovStartY;
-   int fovCurrentY;
+//   int fovStartY;
+//   int fovCurrentY;
 
    float transX, transY;
    float currentTransX, currentTransY;
    float startTransX, startTransY;
 
    GLMatrix startMatrix;
-   GLMatrix currentMatrix;
+//   GLMatrix currentMatrix;
    Vector3d startRotationVector;
    Vector3d currentRotationVector;
    bool isRotating;
    float ballRadius;
-   double residualSpin;
+//   double residualSpin;
    static const float INITIAL_FOV;
    static const float MINIMAL_FOV;
    static const float TRANSLATION_FACTOR;

@@ -131,6 +131,6 @@ void EKFOA::start(){
 		Gui::update_state_and_cov(filter.x_k_k(), filter.p_k_k(), frame, triangulation);
 
 		//PAUSE:
-//		std::cin.ignore(1);
+		std::cin.ignore(1);
 	}
 }

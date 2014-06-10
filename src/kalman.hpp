@@ -8,8 +8,7 @@
 
 #include <Eigen/Dense> //Matrix
 
-#include <opencv2/opencv.hpp> //opencv
-
+#include <opencv2/core/core.hpp> //Point2f
 
 #include <Eigen/Core>  //Derived
 #include <Eigen/Eigen> //math

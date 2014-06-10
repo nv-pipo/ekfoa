@@ -93,7 +93,7 @@ void Arcball::applyRotationMatrix()
          rotationAxis.normalize();
 
          double val = currentRotationVector.dot(startRotationVector);
-         val > (1-1E-10) ? val=1.0 : val=val ;
+         if (val > (1-1E-10)) val=1.0 ;// else: val=val ;
          double rotationAngle = acos(val) * 180.0f/(float)M_PI;
 
          // rotate around the current position
