@@ -60,8 +60,6 @@ void Gui::init(void){
     glEnableClientState(GL_VERTEX_ARRAY);
     glEnableClientState(GL_COLOR_ARRAY);
 
-    glLineWidth(2.0);
-
     // Background color is white
     glClearColor(1, 1, 1, 0);
 
@@ -218,54 +216,8 @@ bool Gui::redraw(){
     	draw_drone();
 
 
-    	//Draw points:
-    	glPointSize(4.0);
-    	glBegin(GL_POINTS);
-    	glColor3f(1.f, 0.f, 1.f);
-    	int num_features = (x_k_k_.rows() - 13) / 6;
-    	int start_feature = 13;
-    	std::vector<Eigen::Vector3d> XYZs;
-    	for (int i=0 ; i<num_features ; i++){
-    		const Eigen::VectorXd & yi = x_k_k_.segment(start_feature, 6);
-    		Eigen::Vector3d XYZ;
-    		Feature::compute_cartesian(yi, XYZ);
-    		glVertex3f(XYZ(0), XYZ(1), XYZ(2));
-    		//Remember the 3D points. Used later for adding the surface. (TODO: Make more sense of the indexes, here I'm adding the points sequentially, but the observation_list can be non sequential)
-    		XYZs.push_back(XYZ);
-    		start_feature += 6;
-    	}
-    	glEnd();
-
-    	//    glVertexPointer(3, GL_FLOAT, sizeof(struct Vertex), vertex);
-    	//    glColorPointer(3, GL_FLOAT, sizeof(struct Vertex), &vertex[0].r); // Pointer to the first color
-    	//    glDrawElements(GL_QUADS, 4 * QUADNUM, GL_UNSIGNED_INT, quad);
-
-    	//Draw triangles:
-    	glBegin(GL_TRIANGLES);
-    	glColor3f(0, 1, 1);
-		for(Delaunay::Finite_faces_iterator fit = triangulation_.finite_faces_begin(); fit != triangulation_.finite_faces_end(); ++fit) {
-			const Delaunay::Face_handle & face = fit;
-			//face->vertex(i)->info() = index of the point in the observation list.
-			XYZs[face->vertex(0)->info()];
-			glVertex3f(XYZs[face->vertex(0)->info()](0), XYZs[face->vertex(0)->info()](1), XYZs[face->vertex(0)->info()](2));
-			glVertex3f(XYZs[face->vertex(1)->info()](0), XYZs[face->vertex(1)->info()](1), XYZs[face->vertex(1)->info()](2));
-			glVertex3f(XYZs[face->vertex(2)->info()](0), XYZs[face->vertex(2)->info()](1), XYZs[face->vertex(2)->info()](2));
-		}
-    	glEnd();
-
-    	glBegin(GL_LINES);
-    	glColor3f(0, 0, 0);
-    	for(Delaunay::Finite_faces_iterator fit = triangulation_.finite_faces_begin(); fit != triangulation_.finite_faces_end(); ++fit) {
-    		const Delaunay::Face_handle & face = fit;
-    		//face->vertex(i)->info() = index of the point in the observation list.
-    		glVertex3f(XYZs[face->vertex(0)->info()](0), XYZs[face->vertex(0)->info()](1), XYZs[face->vertex(0)->info()](2));
-    		glVertex3f(XYZs[face->vertex(1)->info()](0), XYZs[face->vertex(1)->info()](1), XYZs[face->vertex(1)->info()](2));
-    		glVertex3f(XYZs[face->vertex(1)->info()](0), XYZs[face->vertex(1)->info()](1), XYZs[face->vertex(1)->info()](2));
-    		glVertex3f(XYZs[face->vertex(2)->info()](0), XYZs[face->vertex(2)->info()](1), XYZs[face->vertex(2)->info()](2));
-    		glVertex3f(XYZs[face->vertex(2)->info()](0), XYZs[face->vertex(2)->info()](1), XYZs[face->vertex(2)->info()](2));
-    		glVertex3f(XYZs[face->vertex(0)->info()](0), XYZs[face->vertex(0)->info()](1), XYZs[face->vertex(0)->info()](2));
-    	}
-    	glEnd();
+    	//Draw surface:
+    	draw_surface();
 
     }
 
@@ -349,6 +301,7 @@ void Gui::draw_drone(){
     glEnd();
 
     glColor3f(0.f, 0.f, 0.f);
+    glLineWidth(2.0);
     glBegin(GL_LINES);
     const Eigen::Vector3d & origin = drone_points.col(0);
     for (int i=0 ; i< drone_points.cols() ; i++){
@@ -358,6 +311,83 @@ void Gui::draw_drone(){
     }
     glEnd();
     glPopMatrix();
+}
+
+
+void Gui::draw_surface(){
+	//Points
+
+	std::vector<Eigen::Vector3d> XYZs;
+
+	glLineWidth(1.0);
+	glPointSize(4.0);
+
+	for (int start_feature=13 ; start_feature<x_k_k_.rows() ; start_feature+=6){
+		const int feature_inv_depth_index = start_feature+5;
+
+		//Nearly all (99.73%) of the posible depths lie within three standard deviations of the mean!
+		double sigma_3 = std::sqrt(p_k_k_(feature_inv_depth_index, feature_inv_depth_index));
+		const Eigen::VectorXd & yi = x_k_k_.segment(start_feature, 6);
+		Eigen::Vector3d XYZ;
+		Eigen::VectorXd point_close(x_k_k_.segment(start_feature, 6));
+		Eigen::VectorXd point_far(x_k_k_.segment(start_feature, 6));
+		Eigen::Vector3d XYZ_close;
+		Eigen::Vector3d XYZ_far;
+
+		point_close(5) += sigma_3;
+		//Update the inverse depth to make the vector larger:
+		point_far(5) -= sigma_3;
+
+		Feature::compute_cartesian(yi, XYZ); //mean
+		Feature::compute_cartesian(point_close, XYZ_close); //mean + 3*sigma. (since inverted signs are also inverted)
+		Feature::compute_cartesian(point_far, XYZ_far); //mean - 3*sigma
+
+		glBegin(GL_POINTS);
+		glColor3f(1.f, 0.f, 1.f);
+		glVertex3f(XYZ(0), XYZ(1), XYZ(2));
+		glEnd();
+
+		glBegin(GL_LINES);
+		glColor3f(0, 0, 0);
+		glVertex3f(XYZ_close(0), XYZ_close(1), XYZ_close(2));
+		glVertex3f(XYZ_far(0), XYZ_far(1), XYZ_far(2));
+		glEnd();
+
+		//The surface is built with a pesimistic approach...the closest point of the 99
+		XYZs.push_back(XYZ_close);
+	}
+
+	//    glVertexPointer(3, GL_FLOAT, sizeof(struct Vertex), vertex);
+	//    glColorPointer(3, GL_FLOAT, sizeof(struct Vertex), &vertex[0].r); // Pointer to the first color
+	//    glDrawElements(GL_QUADS, 4 * QUADNUM, GL_UNSIGNED_INT, quad);
+
+	//Draw surface:
+	glBegin(GL_TRIANGLES);
+	glColor3f(0, 1, 1);
+	for(Delaunay::Finite_faces_iterator fit = triangulation_.finite_faces_begin(); fit != triangulation_.finite_faces_end(); ++fit) {
+		const Delaunay::Face_handle & face = fit;
+		//face->vertex(i)->info() = index of the point in the observation list.
+		XYZs[face->vertex(0)->info()];
+		glVertex3f(XYZs[face->vertex(0)->info()](0), XYZs[face->vertex(0)->info()](1), XYZs[face->vertex(0)->info()](2));
+		glVertex3f(XYZs[face->vertex(1)->info()](0), XYZs[face->vertex(1)->info()](1), XYZs[face->vertex(1)->info()](2));
+		glVertex3f(XYZs[face->vertex(2)->info()](0), XYZs[face->vertex(2)->info()](1), XYZs[face->vertex(2)->info()](2));
+	}
+	glEnd();
+
+	glBegin(GL_LINES);
+	glLineWidth(2.0);
+	glColor3f(0, 0, 0);
+	for(Delaunay::Finite_faces_iterator fit = triangulation_.finite_faces_begin(); fit != triangulation_.finite_faces_end(); ++fit) {
+		const Delaunay::Face_handle & face = fit;
+		//face->vertex(i)->info() = index of the point in the observation list.
+		glVertex3f(XYZs[face->vertex(0)->info()](0), XYZs[face->vertex(0)->info()](1), XYZs[face->vertex(0)->info()](2));
+		glVertex3f(XYZs[face->vertex(1)->info()](0), XYZs[face->vertex(1)->info()](1), XYZs[face->vertex(1)->info()](2));
+		glVertex3f(XYZs[face->vertex(1)->info()](0), XYZs[face->vertex(1)->info()](1), XYZs[face->vertex(1)->info()](2));
+		glVertex3f(XYZs[face->vertex(2)->info()](0), XYZs[face->vertex(2)->info()](1), XYZs[face->vertex(2)->info()](2));
+		glVertex3f(XYZs[face->vertex(2)->info()](0), XYZs[face->vertex(2)->info()](1), XYZs[face->vertex(2)->info()](2));
+		glVertex3f(XYZs[face->vertex(0)->info()](0), XYZs[face->vertex(0)->info()](1), XYZs[face->vertex(0)->info()](2));
+	}
+	glEnd();
 }
 
 void Gui::release(){

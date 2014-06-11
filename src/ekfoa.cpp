@@ -97,15 +97,24 @@ void EKFOA::start(){
 		time = (double)cv::getTickCount();
 		std::vector< std::pair<Point, size_t> > triangle_list;
 
-		const Eigen::MatrixXd & p_k_k = filter.p_k_k();
 		const Eigen::VectorXd & x_k_k = filter.x_k_k();
+		const Eigen::MatrixXd & p_k_k = filter.p_k_k();
 
 		for (int feature_idx=0 ; feature_idx<features_tracked.size() ; feature_idx++){
-			int feature_depth_index = 13 + feature_idx*6 + 5;
-			if (p_k_k(feature_depth_index, feature_depth_index) < 0.1 && x_k_k(feature_depth_index) > 0)//TODO: Do this nicely...using sigmas.
+			const int start_feature = 13 + feature_idx*6;
+			const int feature_inv_depth_index = start_feature + 5;
+
+			//As with any normal distribution, nearly all (99.73%) of the possible depths lie within three standard deviations of the mean!
+			const double sigma_3 = std::sqrt(p_k_k(feature_inv_depth_index, feature_inv_depth_index)); //sqrt(depth_variance)
+			const double size_sigma_3 = std::abs(1.0/(x_k_k(feature_inv_depth_index)-sigma_3) - 1.0/(x_k_k(feature_inv_depth_index)+sigma_3));
+
+			//If the size that contains the 99.73% of the inverse depth distribution is smaller than the current inverse depth, add it to the surface:
+			if (size_sigma_3 < 1/x_k_k(feature_inv_depth_index)){
 				triangle_list.push_back( std::make_pair( Point(features_tracked[feature_idx].x, features_tracked[feature_idx].y), feature_idx));
-			if (x_k_k(feature_depth_index) < 0 ){
-				std::cout << "darn!!! : idx=" << feature_depth_index << ", value=" << x_k_k(feature_depth_index) << std::endl;
+			}
+
+			if (x_k_k(feature_inv_depth_index) < 0 ){
+				std::cout << "feature behind the camera!!! : idx=" << feature_inv_depth_index << ", value=" << x_k_k(feature_inv_depth_index) << std::endl;
 				std::cin.ignore(1);
 			}
 		}
@@ -123,12 +132,8 @@ void EKFOA::start(){
 		time = (double)cv::getTickCount() - time;
 		std::cout << "delaunay = " << time/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
 
-		cv::Mat bigger;
-		cv::resize(frame, bigger, cv::Size(frame.size().width*2, frame.size().height*2));
-
-//		cv::imshow("bla", bigger);
 		//Notify the gui of the new state:
-		Gui::update_state_and_cov(filter.x_k_k(), filter.p_k_k(), frame, triangulation);
+		Gui::update_state_and_cov(x_k_k, p_k_k, frame, triangulation);
 
 		//PAUSE:
 		std::cin.ignore(1);
