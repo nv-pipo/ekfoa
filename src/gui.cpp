@@ -11,8 +11,12 @@ cv::Mat Gui::frame_cv_;
 GLuint Gui::frame_gl_;
 GLboolean Gui::frame_changed_ = GL_FALSE;
 
-Eigen::VectorXd Gui::x_k_k_;
-Eigen::MatrixXd Gui::p_k_k_;
+std::vector<Point3d> Gui::XYZs_mu_;
+std::vector<Point3d> Gui::XYZs_close_;
+std::vector<Point3d> Gui::XYZs_far_;
+
+Eigen::Vector4d Gui::camera_orientation_(1, 0, 0, 0);
+
 Delaunay Gui::triangulation_;
 
 GLFWwindow* Gui::window_;
@@ -170,12 +174,16 @@ void Gui::framebuffer_size_callback(GLFWwindow* window, int width, int height){
 
 
 //TODO: make thread safe:
-void Gui::update_state_and_cov( const Eigen::VectorXd & x_k_k, const Eigen::MatrixXd & p_k_k, const cv::Mat & frame_cv, const Delaunay & triangulation ){
+void Gui::update_state_and_cov( const Eigen::Vector3d & camera_pos, const Eigen::Vector4d & camera_orientation, const std::vector<Point3d> & XYZs_mu, const std::vector<Point3d> & XYZs_close, const std::vector<Point3d> & XYZs_far, const Delaunay & triangulation, const cv::Mat & frame_cv ){
 //	std::cout << "update" << std::endl;
-	x_k_k_ = x_k_k;
-	p_k_k_ = p_k_k;
+	XYZs_mu_ = XYZs_mu;
+	XYZs_close_ = XYZs_close;
+	XYZs_far_ = XYZs_far;
+
+	camera_orientation_ = camera_orientation;
+
 	triangulation_ = triangulation;
-    trajectory.push_back(x_k_k.segment(0, 3));
+    trajectory.push_back(camera_pos);
 
     frame_cv_ = frame_cv;
     frame_ratio_ = (double)frame_cv.cols/(double)frame_cv.rows;
@@ -211,15 +219,12 @@ bool Gui::redraw(){
 
     arcball_.applyRotationMatrix();
 
-    if (p_k_k_.rows()>0){
-    	//Draw "drone":
-    	draw_drone();
+    //Draw "drone":
+    draw_drone();
 
 
-    	//Draw surface:
-    	draw_surface();
-
-    }
+    //Draw surface:
+    draw_surface();
 
     glfwSwapBuffers(window_);
     glfwPollEvents();
@@ -279,16 +284,15 @@ void Gui::draw_drone(){
     //The "drone"
     glPushMatrix();
 
-    glTranslated(x_k_k_(0), x_k_k_(1), x_k_k_(2));
-//    glRotated(x_k_k_(3) * 180/M_PI, x_k_k_(4), x_k_k_(5), x_k_k_(6));
+    if (trajectory.size()>0)
+    	glTranslated(trajectory.back()(0), trajectory.back()(1), trajectory.back()(2));
 
-    Eigen::Quaterniond q(x_k_k_(3), x_k_k_(4), x_k_k_(5), x_k_k_(6));
-    Eigen::MatrixXd R = q.toRotationMatrix();
+    Eigen::Matrix3d R;
+    MotionModel::quaternion_matrix(camera_orientation_, R);
 
     //rotate:
     Eigen::MatrixXd drone_points = R * drone_points_;
 
-//    Eigen::MatrixXd drone_points_rotated = drone_points_;
     glScalef(0.01f, 0.01f, 0.01f);
 
     //TODO: draw this with OpenGL primitives: 'glDrawElements'. It will be faster.
@@ -317,76 +321,57 @@ void Gui::draw_drone(){
 void Gui::draw_surface(){
 	//Points
 
-	std::vector<Eigen::Vector3d> XYZs;
-
 	glLineWidth(1.0);
 	glPointSize(4.0);
 
-	for (int start_feature=13 ; start_feature<x_k_k_.rows() ; start_feature+=6){
-		const int feature_inv_depth_index = start_feature+5;
 
-		//Nearly all (99.73%) of the posible depths lie within three standard deviations of the mean!
-		double sigma_3 = std::sqrt(p_k_k_(feature_inv_depth_index, feature_inv_depth_index));
-		const Eigen::VectorXd & yi = x_k_k_.segment(start_feature, 6);
-		Eigen::Vector3d XYZ;
-		Eigen::VectorXd point_close(x_k_k_.segment(start_feature, 6));
-		Eigen::VectorXd point_far(x_k_k_.segment(start_feature, 6));
-		Eigen::Vector3d XYZ_close;
-		Eigen::Vector3d XYZ_far;
-
-		point_close(5) += sigma_3;
-		//Update the inverse depth to make the vector larger:
-		point_far(5) -= sigma_3;
-
-		Feature::compute_cartesian(yi, XYZ); //mean
-		Feature::compute_cartesian(point_close, XYZ_close); //mean + 3*sigma. (since inverted signs are also inverted)
-		Feature::compute_cartesian(point_far, XYZ_far); //mean - 3*sigma
-
-		glBegin(GL_POINTS);
-		glColor3f(1.f, 0.f, 1.f);
-		glVertex3f(XYZ(0), XYZ(1), XYZ(2));
-		glEnd();
-
-		glBegin(GL_LINES);
-		glColor3f(0, 0, 0);
-		glVertex3f(XYZ_close(0), XYZ_close(1), XYZ_close(2));
-		glVertex3f(XYZ_far(0), XYZ_far(1), XYZ_far(2));
-		glEnd();
-
-		//The surface is built with a pesimistic approach...the closest point of the 99
-		XYZs.push_back(XYZ_close);
+	glColor3f(1.f, 0.f, 1.f);
+	glBegin(GL_POINTS);
+	//Draw each point mean estimated position:
+	for (int i=0 ; i<XYZs_mu_.size() ; i++){
+		glVertex3f(XYZs_mu_[i].x(), XYZs_mu_[i].y(), XYZs_mu_[i].z());
 	}
+	glEnd();
 
-	//    glVertexPointer(3, GL_FLOAT, sizeof(struct Vertex), vertex);
-	//    glColorPointer(3, GL_FLOAT, sizeof(struct Vertex), &vertex[0].r); // Pointer to the first color
-	//    glDrawElements(GL_QUADS, 4 * QUADNUM, GL_UNSIGNED_INT, quad);
+	glColor3f(0, 0, 0);
+	glBegin(GL_LINES);
+	//Draw each point depth uncertainty as a line between the -3*sigma and 3*sigma of the mean:
+	for (int i=0 ; i<XYZs_mu_.size() ; i++){
+		glVertex3f(XYZs_close_[i].x(), XYZs_close_[i].y(), XYZs_close_[i].z());
+		glVertex3f(XYZs_far_[i].x(), XYZs_far_[i].y(), XYZs_far_[i].z());
+	}
+	glEnd();
 
 	//Draw surface:
 	glBegin(GL_TRIANGLES);
 	glColor3f(0, 1, 1);
+	std::list<Triangle> surface_faces;
 	for(Delaunay::Finite_faces_iterator fit = triangulation_.finite_faces_begin(); fit != triangulation_.finite_faces_end(); ++fit) {
 		const Delaunay::Face_handle & face = fit;
 		//face->vertex(i)->info() = index of the point in the observation list.
-		XYZs[face->vertex(0)->info()];
-		glVertex3f(XYZs[face->vertex(0)->info()](0), XYZs[face->vertex(0)->info()](1), XYZs[face->vertex(0)->info()](2));
-		glVertex3f(XYZs[face->vertex(1)->info()](0), XYZs[face->vertex(1)->info()](1), XYZs[face->vertex(1)->info()](2));
-		glVertex3f(XYZs[face->vertex(2)->info()](0), XYZs[face->vertex(2)->info()](1), XYZs[face->vertex(2)->info()](2));
+		//The surface is built with a pesimistic approach...the closest point of the 99.73% of the distribution mass
+		glVertex3f(XYZs_close_[face->vertex(0)->info()].x(), XYZs_close_[face->vertex(0)->info()].y(), XYZs_close_[face->vertex(0)->info()].z());
+		glVertex3f(XYZs_close_[face->vertex(1)->info()].x(), XYZs_close_[face->vertex(1)->info()].y(), XYZs_close_[face->vertex(1)->info()].z());
+		glVertex3f(XYZs_close_[face->vertex(2)->info()].x(), XYZs_close_[face->vertex(2)->info()].y(), XYZs_close_[face->vertex(2)->info()].z());
+
 	}
 	glEnd();
 
 	glBegin(GL_LINES);
 	glLineWidth(2.0);
 	glColor3f(0, 0, 0);
+	//Draw the segment lines betweeen each two points in the surface:
 	for(Delaunay::Finite_faces_iterator fit = triangulation_.finite_faces_begin(); fit != triangulation_.finite_faces_end(); ++fit) {
 		const Delaunay::Face_handle & face = fit;
 		//face->vertex(i)->info() = index of the point in the observation list.
-		glVertex3f(XYZs[face->vertex(0)->info()](0), XYZs[face->vertex(0)->info()](1), XYZs[face->vertex(0)->info()](2));
-		glVertex3f(XYZs[face->vertex(1)->info()](0), XYZs[face->vertex(1)->info()](1), XYZs[face->vertex(1)->info()](2));
-		glVertex3f(XYZs[face->vertex(1)->info()](0), XYZs[face->vertex(1)->info()](1), XYZs[face->vertex(1)->info()](2));
-		glVertex3f(XYZs[face->vertex(2)->info()](0), XYZs[face->vertex(2)->info()](1), XYZs[face->vertex(2)->info()](2));
-		glVertex3f(XYZs[face->vertex(2)->info()](0), XYZs[face->vertex(2)->info()](1), XYZs[face->vertex(2)->info()](2));
-		glVertex3f(XYZs[face->vertex(0)->info()](0), XYZs[face->vertex(0)->info()](1), XYZs[face->vertex(0)->info()](2));
+		glVertex3f(XYZs_close_[face->vertex(0)->info()].x(), XYZs_close_[face->vertex(0)->info()].y(), XYZs_close_[face->vertex(0)->info()].z());
+		glVertex3f(XYZs_close_[face->vertex(1)->info()].x(), XYZs_close_[face->vertex(1)->info()].y(), XYZs_close_[face->vertex(1)->info()].z());
+		glVertex3f(XYZs_close_[face->vertex(1)->info()].x(), XYZs_close_[face->vertex(1)->info()].y(), XYZs_close_[face->vertex(1)->info()].z());
+		glVertex3f(XYZs_close_[face->vertex(2)->info()].x(), XYZs_close_[face->vertex(2)->info()].y(), XYZs_close_[face->vertex(2)->info()].z());
+		glVertex3f(XYZs_close_[face->vertex(2)->info()].x(), XYZs_close_[face->vertex(2)->info()].y(), XYZs_close_[face->vertex(2)->info()].z());
+		glVertex3f(XYZs_close_[face->vertex(0)->info()].x(), XYZs_close_[face->vertex(0)->info()].y(), XYZs_close_[face->vertex(0)->info()].z());
 	}
+
 	glEnd();
 }
 

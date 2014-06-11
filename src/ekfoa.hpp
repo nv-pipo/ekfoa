@@ -25,7 +25,7 @@ typedef CGAL::Exact_predicates_exact_constructions_kernel         K;
 typedef CGAL::Triangulation_vertex_base_with_info_2<size_t, K>    Vb;
 typedef CGAL::Triangulation_data_structure_2<Vb>                  Tds;
 typedef CGAL::Delaunay_triangulation_2<K, Tds>                    Delaunay;
-typedef K::Point_2                                                Point;
+typedef K::Point_2                                                Point2d;
 
 class EKFOA {
 private:

@@ -95,11 +95,16 @@ void EKFOA::start(){
 
 
 		time = (double)cv::getTickCount();
-		std::vector< std::pair<Point, size_t> > triangle_list;
+		std::vector< std::pair<Point2d, size_t> > triangle_list;
 
 		const Eigen::VectorXd & x_k_k = filter.x_k_k();
 		const Eigen::MatrixXd & p_k_k = filter.p_k_k();
 
+		std::vector<Point3d> XYZs_mu;
+		std::vector<Point3d> XYZs_close;
+		std::vector<Point3d> XYZs_far;
+
+		//Compute the positions and inverse depth variances of the points that were successfully tracked (features_tracked.size())
 		for (int feature_idx=0 ; feature_idx<features_tracked.size() ; feature_idx++){
 			const int start_feature = 13 + feature_idx*6;
 			const int feature_inv_depth_index = start_feature + 5;
@@ -108,9 +113,27 @@ void EKFOA::start(){
 			const double sigma_3 = std::sqrt(p_k_k(feature_inv_depth_index, feature_inv_depth_index)); //sqrt(depth_variance)
 			const double size_sigma_3 = std::abs(1.0/(x_k_k(feature_inv_depth_index)-sigma_3) - 1.0/(x_k_k(feature_inv_depth_index)+sigma_3));
 
+			const Eigen::VectorXd & yi = x_k_k.segment(start_feature, 6);
+			Eigen::Vector3d XYZ; //mu (mean)
+			Eigen::VectorXd point_close(x_k_k.segment(start_feature, 6));
+			Eigen::VectorXd point_far(x_k_k.segment(start_feature, 6));
+			Eigen::Vector3d XYZ_close;
+			Eigen::Vector3d XYZ_far;
+
+			point_close(5) += sigma_3;
+			point_far(5) -= sigma_3;
+
+			Feature::compute_cartesian(yi, XYZ); //mean
+			Feature::compute_cartesian(point_close, XYZ_close); //mean + 3*sigma. (since inverted signs are also inverted)
+			Feature::compute_cartesian(point_far, XYZ_far); //mean - 3*sigma
+
+			XYZs_mu.push_back(Point3d(XYZ(0), XYZ(1), XYZ(2)));
+			XYZs_close.push_back(Point3d(XYZ_close(0), XYZ_close(1), XYZ_close(2)));
+			XYZs_far.push_back(Point3d(XYZ_far(0), XYZ_far(1), XYZ_far(2)));
+
 			//If the size that contains the 99.73% of the inverse depth distribution is smaller than the current inverse depth, add it to the surface:
 			if (size_sigma_3 < 1/x_k_k(feature_inv_depth_index)){
-				triangle_list.push_back( std::make_pair( Point(features_tracked[feature_idx].x, features_tracked[feature_idx].y), feature_idx));
+				triangle_list.push_back( std::make_pair( Point2d(features_tracked[feature_idx].x, features_tracked[feature_idx].y), feature_idx));
 			}
 
 			if (x_k_k(feature_inv_depth_index) < 0 ){
@@ -129,11 +152,38 @@ void EKFOA::start(){
 			line(frame, features_tracked[face->vertex(2)->info()], features_tracked[face->vertex(0)->info()], delaunay_color, 1);
 		}
 
+
+//		//Point3d XYZs[3];
+//		std::vector<Point3d> XYZs;
+//		std::list<Triangle> triangles;
+//		if (true){
+//			XYZs.push_back(Point3d(1.0, 0.0, 0.0));
+//			XYZs.push_back(Point3d(0.0, 1.0, 0.0));
+//			XYZs.push_back(Point3d(0.0, 0.0, 1.0));
+//			XYZs.push_back(Point3d(-0.5, 0.0, 0.0));
+//		}
+//
+//		triangles.push_back(Triangle(XYZs[0],XYZs[1],XYZs[2]));
+//		triangles.push_back(Triangle(XYZs[3],XYZs[1],XYZs[2]));
+//
+//		// constructs AABB tree
+//		Tree tree(triangles.begin(),triangles.end());
+//
+//		if (tree.size()>0){
+//			// compute closest point and squared distance
+//			Point3d point_query(0.0, 0.0, 0.0);
+//			Point3d closest_point = tree.closest_point(point_query);
+//			std::cerr << "closest point is: " << closest_point << std::endl;
+//			FT sqd = tree.squared_distance(point_query);
+//			std::cout << "squared distance: " << sqd << std::endl;
+//		}
+
+
 		time = (double)cv::getTickCount() - time;
-		std::cout << "delaunay = " << time/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
+		std::cout << "obstacle avoidance = " << time/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
 
 		//Notify the gui of the new state:
-		Gui::update_state_and_cov(x_k_k, p_k_k, frame, triangulation);
+		Gui::update_state_and_cov(x_k_k.head<3>(), x_k_k.segment<4>(3), XYZs_mu, XYZs_close, XYZs_far, triangulation, frame);
 
 		//PAUSE:
 		std::cin.ignore(1);
