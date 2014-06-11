@@ -14,6 +14,7 @@ GLboolean Gui::frame_changed_ = GL_FALSE;
 std::vector<Point3d> Gui::XYZs_mu_;
 std::vector<Point3d> Gui::XYZs_close_;
 std::vector<Point3d> Gui::XYZs_far_;
+Point3d Gui::closest_point_;
 
 Eigen::Vector4d Gui::camera_orientation_(1, 0, 0, 0);
 
@@ -174,11 +175,13 @@ void Gui::framebuffer_size_callback(GLFWwindow* window, int width, int height){
 
 
 //TODO: make thread safe:
-void Gui::update_state_and_cov( const Eigen::Vector3d & camera_pos, const Eigen::Vector4d & camera_orientation, const std::vector<Point3d> & XYZs_mu, const std::vector<Point3d> & XYZs_close, const std::vector<Point3d> & XYZs_far, const Delaunay & triangulation, const cv::Mat & frame_cv ){
+void Gui::update_state_and_cov( const Eigen::Vector3d & camera_pos, const Eigen::Vector4d & camera_orientation, const std::vector<Point3d> & XYZs_mu, const std::vector<Point3d> & XYZs_close, const std::vector<Point3d> & XYZs_far, const Delaunay & triangulation, const Point3d & closest_point, const cv::Mat & frame_cv ){
 //	std::cout << "update" << std::endl;
 	XYZs_mu_ = XYZs_mu;
 	XYZs_close_ = XYZs_close;
 	XYZs_far_ = XYZs_far;
+
+	closest_point_ = closest_point;
 
 	camera_orientation_ = camera_orientation;
 
@@ -249,7 +252,6 @@ void Gui::draw_frame(){
 	    	frame_changed_ = false;//Synchronization of this variable is not too bad, only that an update could take an extra loop.
 	    }
 
-
 	    glEnable(GL_TEXTURE_2D);
 	    glPushMatrix();
 	    glTranslatef(-0.9, 0.9, -1);
@@ -319,33 +321,41 @@ void Gui::draw_drone(){
 
 
 void Gui::draw_surface(){
+
+	glPointSize(5.0);
+
+	glColor3f(1.f, 0.f, 0.f);
+	glBegin(GL_POINTS);
+	glVertex3f(closest_point_.x(), closest_point_.y(), closest_point_.z());
+
+	glEnd();
+
 	//Points
-
-	glLineWidth(1.0);
 	glPointSize(4.0);
-
 
 	glColor3f(1.f, 0.f, 1.f);
 	glBegin(GL_POINTS);
 	//Draw each point mean estimated position:
-	for (int i=0 ; i<XYZs_mu_.size() ; i++){
+	for (size_t i=0 ; i<XYZs_mu_.size() ; i++){
 		glVertex3f(XYZs_mu_[i].x(), XYZs_mu_[i].y(), XYZs_mu_[i].z());
 	}
 	glEnd();
 
+	//Inverse depth uncertainty:
+	glLineWidth(1.0);
 	glColor3f(0, 0, 0);
 	glBegin(GL_LINES);
 	//Draw each point depth uncertainty as a line between the -3*sigma and 3*sigma of the mean:
-	for (int i=0 ; i<XYZs_mu_.size() ; i++){
+	for (size_t i=0 ; i<XYZs_mu_.size() ; i++){
 		glVertex3f(XYZs_close_[i].x(), XYZs_close_[i].y(), XYZs_close_[i].z());
 		glVertex3f(XYZs_far_[i].x(), XYZs_far_[i].y(), XYZs_far_[i].z());
 	}
 	glEnd();
 
-	//Draw surface:
-	glBegin(GL_TRIANGLES);
+	//surface:
 	glColor3f(0, 1, 1);
 	std::list<Triangle> surface_faces;
+	glBegin(GL_TRIANGLES);
 	for(Delaunay::Finite_faces_iterator fit = triangulation_.finite_faces_begin(); fit != triangulation_.finite_faces_end(); ++fit) {
 		const Delaunay::Face_handle & face = fit;
 		//face->vertex(i)->info() = index of the point in the observation list.
@@ -357,9 +367,9 @@ void Gui::draw_surface(){
 	}
 	glEnd();
 
-	glBegin(GL_LINES);
 	glLineWidth(2.0);
 	glColor3f(0, 0, 0);
+	glBegin(GL_LINES);
 	//Draw the segment lines betweeen each two points in the surface:
 	for(Delaunay::Finite_faces_iterator fit = triangulation_.finite_faces_begin(); fit != triangulation_.finite_faces_end(); ++fit) {
 		const Delaunay::Face_handle & face = fit;

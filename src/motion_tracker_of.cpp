@@ -49,7 +49,7 @@ void MotionTrackerOF::process(cv::Mat & input_2, Eigen::MatrixXd & features_adde
 		std::vector<cv::Point2f> p1;
 		std::vector<cv::Point2f> p2;
 		std::vector<uchar> status_ransac;
-		std::vector<int> removed_of;
+		std::vector<size_t> removed_of;
 		for(size_t idx=0; idx < points_tracked_1.size() ; idx++) {
 			if (accept_tracked_point(idx)){
 				p1.push_back(points_tracked_1[idx]);
@@ -64,7 +64,7 @@ void MotionTrackerOF::process(cv::Mat & input_2, Eigen::MatrixXd & features_adde
 
 		cv::Scalar color;
 
-		int idx_removed_of = 0;
+		size_t idx_removed_of = 0;
 		for(size_t idx=0; idx < p1.size() ; idx++) {
 			color = cv::Scalar(0, 0, 255, 255);//red
 

@@ -1,4 +1,4 @@
-CXXFLAGS=-O3 -Wall -DEIGEN_NO_DEBUG -D__ARM_NEON__ -fPIC -march=armv7-a -mfloat-abi=hard -mfpu=neon -ftree-vectorize -mvectorize-with-neon-quad -mcpu=cortex-a9 -mtune=cortex-a9
+CXXFLAGS=-O3 -Wall -DEIGEN_NO_DEBUG -D__ARM_NEON__ -fPIC -march=armv7-a -mfloat-abi=hard -mfpu=neon -ftree-vectorize -mvectorize-with-neon-quad -mcpu=cortex-a9 -mtune=cortex-a9 -frounding-math
 
 INCLUDES=-I/opt/local/include/ -I/opt/local/include/eigen3 -I/usr/include/eigen3/ -I/usr/include/ -I/opt/ros/hydro/include/ -I/usr/include/libdrm
 

@@ -105,7 +105,7 @@ void EKFOA::start(){
 		std::vector<Point3d> XYZs_far;
 
 		//Compute the positions and inverse depth variances of the points that were successfully tracked (features_tracked.size())
-		for (int feature_idx=0 ; feature_idx<features_tracked.size() ; feature_idx++){
+		for (size_t feature_idx=0 ; feature_idx<features_tracked.size() ; feature_idx++){
 			const int start_feature = 13 + feature_idx*6;
 			const int feature_inv_depth_index = start_feature + 5;
 
@@ -142,6 +142,7 @@ void EKFOA::start(){
 			}
 		}
 
+		std::list<Triangle> triangles_list_3d;
 		Delaunay triangulation(triangle_list.begin(), triangle_list.end());
 		cv::Scalar delaunay_color = cv::Scalar(255, 0, 0); //blue
 		for(Delaunay::Finite_faces_iterator fit = triangulation.finite_faces_begin(); fit != triangulation.finite_faces_end(); ++fit) {
@@ -150,40 +151,30 @@ void EKFOA::start(){
 			line(frame, features_tracked[face->vertex(0)->info()], features_tracked[face->vertex(1)->info()], delaunay_color, 1);
 			line(frame, features_tracked[face->vertex(1)->info()], features_tracked[face->vertex(2)->info()], delaunay_color, 1);
 			line(frame, features_tracked[face->vertex(2)->info()], features_tracked[face->vertex(0)->info()], delaunay_color, 1);
+
+			//Add the face of the linked 3d points of this 2d triangle:
+			triangles_list_3d.push_back(Triangle(XYZs_close[face->vertex(0)->info()], XYZs_close[face->vertex(1)->info()], XYZs_close[face->vertex(2)->info()]));
 		}
 
+		// constructs AABB tree
+		Tree tree(triangles_list_3d.begin(), triangles_list_3d.end());
 
-//		//Point3d XYZs[3];
-//		std::vector<Point3d> XYZs;
-//		std::list<Triangle> triangles;
-//		if (true){
-//			XYZs.push_back(Point3d(1.0, 0.0, 0.0));
-//			XYZs.push_back(Point3d(0.0, 1.0, 0.0));
-//			XYZs.push_back(Point3d(0.0, 0.0, 1.0));
-//			XYZs.push_back(Point3d(-0.5, 0.0, 0.0));
-//		}
-//
-//		triangles.push_back(Triangle(XYZs[0],XYZs[1],XYZs[2]));
-//		triangles.push_back(Triangle(XYZs[3],XYZs[1],XYZs[2]));
-//
-//		// constructs AABB tree
-//		Tree tree(triangles.begin(),triangles.end());
-//
-//		if (tree.size()>0){
-//			// compute closest point and squared distance
-//			Point3d point_query(0.0, 0.0, 0.0);
-//			Point3d closest_point = tree.closest_point(point_query);
-//			std::cerr << "closest point is: " << closest_point << std::endl;
-//			FT sqd = tree.squared_distance(point_query);
-//			std::cout << "squared distance: " << sqd << std::endl;
-//		}
+		Point3d closest_point;
+		if (tree.size()>0){
+			// compute closest point and squared distance
+			Point3d point_query(x_k_k(0), x_k_k(1), x_k_k(2));
+			closest_point = tree.closest_point(point_query);
+			std::cerr << "closest point is: " << closest_point << std::endl;
+			FT sqd = tree.squared_distance(point_query);
+			std::cout << "squared distance: " << sqd << std::endl;
+		}
 
 
 		time = (double)cv::getTickCount() - time;
 		std::cout << "obstacle avoidance = " << time/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
 
 		//Notify the gui of the new state:
-		Gui::update_state_and_cov(x_k_k.head<3>(), x_k_k.segment<4>(3), XYZs_mu, XYZs_close, XYZs_far, triangulation, frame);
+		Gui::update_state_and_cov(x_k_k.head<3>(), x_k_k.segment<4>(3), XYZs_mu, XYZs_close, XYZs_far, triangulation, closest_point, frame);
 
 		//PAUSE:
 		std::cin.ignore(1);

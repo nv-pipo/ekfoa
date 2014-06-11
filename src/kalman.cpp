@@ -245,6 +245,8 @@ void Kalman::add_a_feature_state_inverse_depth( const Eigen::VectorXd & XYZ_w, c
  * With the camera parameters and observations (mapped to the current state features) it corrects the state and covariance matrix of the EKF.
  */
 void Kalman::update( const Camera & cam, const std::vector<cv::Point2f> & features_observations ){
+
+	//TODO: Assert the size of the observations with the current size of the x_k_k_ and p_k_k_
 	//Return if there were no observations:
 	if (features_observations.size() == 0)
 		return;
@@ -258,7 +260,7 @@ void Kalman::update( const Camera & cam, const std::vector<cv::Point2f> & featur
 	std::vector<Eigen::MatrixXd> list_H;
 
 	//compute 'h' and its Jacobian 'H':
-	for(size_t yi_start_pos = 13; yi_start_pos < x_k_k_.rows(); yi_start_pos+=6) {
+	for(int yi_start_pos = 13; yi_start_pos < x_k_k_.rows(); yi_start_pos+=6) {
 
 		Eigen::VectorXd yi = x_k_k_.segment(yi_start_pos, 6); //feature_state
 		Eigen::Vector2d hi; //this feature state estimation represented in image coordinates
