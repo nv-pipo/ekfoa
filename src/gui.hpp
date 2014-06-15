@@ -54,20 +54,16 @@ public:
 	static bool redraw();
 	static void init();
 	static void release();
-	static void update_state_and_cov( const Eigen::Vector3d & camera_pos, const Eigen::Vector4d & camera_orientation, const std::vector<Point3d> & XYZs_mu, const std::vector<Point3d> & XYZs_close, const std::vector<Point3d> & XYZs_far, const Delaunay & triangulation, const Point3d & closest_point, const cv::Mat & frame_cv );
+	static void update_state_and_cov( const Eigen::Vector3d & camera_pos, const Eigen::Vector4d & camera_orientation, const std::vector<Point3d> & XYZs_mu, const std::vector<Point3d> & XYZs_close, const std::vector<Point3d> & XYZs_far, const Delaunay & triangulation, const Point3d & closest_point);
 
 private:
+	static boost::mutex lock_;
+
 	static Arcball arcball_;
 	static GLfloat zoom_;
 	static GLboolean is_rotating_;
 
 	static Eigen::MatrixXd drone_points_;
-
-	static GLuint frame_gl_;
-	static cv::Mat frame_cv_;
-	static double frame_ratio_;
-
-	static GLboolean frame_changed_;
 
 	static std::vector<Point3d> XYZs_mu_;
 	static std::vector<Point3d> XYZs_close_;
@@ -82,7 +78,6 @@ private:
 	static Eigen::Vector4d camera_orientation_;
 
 
-	static void draw_frame();
 	static void draw_drone();
 	static void draw_surface();
 	static void error_callback(int error, const char* description);

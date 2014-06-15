@@ -4,20 +4,20 @@
 EKFOA::EKFOA() :
 cam(Camera(
 		//Sample
-		0.0112,	  		    //d
-		1.7945 / 0.0112,  //Cx
-		1.4433 / 0.0112,  //Cy
-		6.333e-2, //k1
-		1.390e-2, //k2
-		2.1735   			//f
+//		0.0112,	  		    //d
+//		1.7945 / 0.0112,  //Cx
+//		1.4433 / 0.0112,  //Cy
+//		6.333e-2, //k1
+//		1.390e-2, //k2
+//		2.1735   			//f
 
 		//ARDRONE:
-//		0.0112,	  		    //d
-//		306.3494790390417392700328491628170013427734375,                    //Cx
-//		186.7931235621226733201183378696441650390625,                       //Cy
-//		0.01290423394388880151684162456149351783096790313720703125,         //k1
-//		0.0004390594570202506897842187338909525351482443511486053466796875, //k2
-//		2.1735   			//f
+		0.0112,	  		    //d
+		303.4832388214409775173407979309558868408203125,                    //Cx
+		185.030127342570523296672035939991474151611328125,                  //Cy
+		0.01315450896536778969958536578133134753443300724029541015625,      //k1
+		0.000395589335442645350336687837256022248766385018825531005859375,  //k2
+		2.1735   			//f
 )),
 filter(Kalman(
 		0.0,   //v_0
@@ -42,12 +42,14 @@ void EKFOA::start(){
 
 	//Sequence path and initial image
 	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/ekfmonoslam/rawoutput";
-//	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/ardrone/heldIndoors2/img";
+//	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/ardrone/rotation_indoors2/img";
 	int initIm = 90;
 	int lastIm = 2000;
 
 	char file_path[255]; // enough to hold all numbers up to 64-bits
 
+	cv::namedWindow("Camera input", cv::WINDOW_AUTOSIZE );
+	cv::moveWindow("Camera input", 1040, 0);
 
 	for (int step=initIm+1 ; step<lastIm ; step++){
 		std::cout << "step: " << step << std::endl;
@@ -173,8 +175,12 @@ void EKFOA::start(){
 		time = (double)cv::getTickCount() - time;
 		std::cout << "obstacle avoidance = " << time/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
 
+		//Show input frame
+		cv::imshow("Camera input", frame);
+
 		//Notify the gui of the new state:
-		Gui::update_state_and_cov(x_k_k.head<3>(), x_k_k.segment<4>(3), XYZs_mu, XYZs_close, XYZs_far, triangulation, closest_point, frame);
+		Gui::update_state_and_cov(x_k_k.head<3>(), x_k_k.segment<4>(3), XYZs_mu, XYZs_close, XYZs_far, triangulation, closest_point);
+
 
 		//PAUSE:
 		std::cin.ignore(1);

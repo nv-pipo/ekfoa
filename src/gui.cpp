@@ -1,15 +1,12 @@
 #include "gui.hpp"
 
+boost::mutex Gui::lock_;
+
 Arcball Gui::arcball_;
 GLfloat Gui::zoom_ = 3.f;
 GLboolean Gui::is_rotating_ = GL_FALSE;
 
 Eigen::MatrixXd Gui::drone_points_(3, 6); //(six vertex)
-
-double Gui::frame_ratio_ = 0;
-cv::Mat Gui::frame_cv_;
-GLuint Gui::frame_gl_;
-GLboolean Gui::frame_changed_ = GL_FALSE;
 
 std::vector<Point3d> Gui::XYZs_mu_;
 std::vector<Point3d> Gui::XYZs_close_;
@@ -37,12 +34,12 @@ void Gui::init(void){
 	if (!glfwInit())
 		exit(EXIT_FAILURE);
 
-	window_ = glfwCreateWindow(1300, 800, "EKF Obstacle avoidance", NULL, NULL);
+	window_ = glfwCreateWindow(640, 600, "EKF Obstacle avoidance", NULL, NULL);
 	if (!window_) {
 		glfwTerminate();
 		exit(EXIT_FAILURE);
 	}
-	glfwSetWindowPos(window_, 280, 20);
+	glfwSetWindowPos(window_, 1040, 430);
 
 
 	glfwSetKeyCallback(window_, key_callback);
@@ -174,8 +171,10 @@ void Gui::framebuffer_size_callback(GLFWwindow* window, int width, int height){
 }
 
 
-//TODO: make thread safe:
-void Gui::update_state_and_cov( const Eigen::Vector3d & camera_pos, const Eigen::Vector4d & camera_orientation, const std::vector<Point3d> & XYZs_mu, const std::vector<Point3d> & XYZs_close, const std::vector<Point3d> & XYZs_far, const Delaunay & triangulation, const Point3d & closest_point, const cv::Mat & frame_cv ){
+void Gui::update_state_and_cov( const Eigen::Vector3d & camera_pos, const Eigen::Vector4d & camera_orientation, const std::vector<Point3d> & XYZs_mu, const std::vector<Point3d> & XYZs_close, const std::vector<Point3d> & XYZs_far, const Delaunay & triangulation, const Point3d & closest_point ){
+	//lock
+	lock_.lock();
+
 //	std::cout << "update" << std::endl;
 	XYZs_mu_ = XYZs_mu;
 	XYZs_close_ = XYZs_close;
@@ -188,11 +187,8 @@ void Gui::update_state_and_cov( const Eigen::Vector3d & camera_pos, const Eigen:
 	triangulation_ = triangulation;
     trajectory.push_back(camera_pos);
 
-    frame_cv_ = frame_cv;
-    frame_ratio_ = (double)frame_cv.cols/(double)frame_cv.rows;
-    frame_changed_ = true;
-
-//    redraw();//TODO: can't call it from the kalman filter thread...work around this
+    //unlock
+    lock_.unlock();
 }
 
 //========================================================================
@@ -211,8 +207,8 @@ bool Gui::redraw(){
     glLoadIdentity();
 
 
-    //Draw frame:
-    draw_frame();
+    //Lock
+    lock_.lock();
 
     // Move back
     glTranslatef(0, 0, -zoom_);
@@ -228,49 +224,13 @@ bool Gui::redraw(){
 
     //Draw surface:
     draw_surface();
+    lock_.unlock();
 
     glfwSwapBuffers(window_);
     glfwPollEvents();
 //    glfwWaitEvents();
 
     return true;
-}
-
-void Gui::draw_frame(){
-	if (frame_changed_){
-	    	//TODO: Can this go in the init?
-	    	glGenTextures(1, &frame_gl_);
-	    	glBindTexture(GL_TEXTURE_2D, frame_gl_);
-	    	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	    	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	    	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	    	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	    	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
-	    	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, frame_cv_.cols, frame_cv_.rows, 0, GL_BGR, GL_UNSIGNED_BYTE, frame_cv_.data);
-
-	    	frame_changed_ = false;//Synchronization of this variable is not too bad, only that an update could take an extra loop.
-	    }
-
-	    glEnable(GL_TEXTURE_2D);
-	    glPushMatrix();
-	    glTranslatef(-0.9, 0.9, -1);
-	    glBindTexture(GL_TEXTURE_2D, frame_gl_); // choose the texture to use.
-	    glColor3f(1, 1, 1);
-
-	    glBegin(GL_QUADS);
-
-	    double x = 1.0/2.0;  //width = 1/3 * width/width
-	    double y = frame_ratio_/2.0; //height = 1/3 * height/width = ratio/3
-
-	    glTexCoord2f(0.0f, 0.0f);glVertex3f(0,  0, 0);
-	    glTexCoord2f(0.0f, 1.0f);glVertex3f(0, -y, 0);
-	    glTexCoord2f(1.0f, 1.0f);glVertex3f(x, -y, 0);
-	    glTexCoord2f(1.0f, 0.0f);glVertex3f(x,  0, 0);
-
-	    glEnd();
-	    glPopMatrix();
-	    glDisable(GL_TEXTURE_2D);
 }
 
 void Gui::draw_drone(){
