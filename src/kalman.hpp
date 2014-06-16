@@ -22,9 +22,9 @@ public:
 	Kalman(double v_0, double std_v_0, double w_0, double std_w_0, double sigma_a, double sigma_alpha, double sigma_image_noise);
 	Kalman(const Eigen::VectorXd & x_k_k, const Eigen::MatrixXd & p_k_k, double sigma_a, double sigma_alpha, double sigma_image_noise);
 
-	void delete_features(std::vector<int> & delete_list);
+	void delete_features(std::vector<size_t> & delete_list);
 	void predict_state_and_covariance(const double delta_t);
-	void add_features_inverse_depth( const Camera & cam, const Eigen::MatrixXd & undistorted_projections );
+	void add_features_inverse_depth( const Camera & cam, const std::vector<cv::Point2f> & new_features_uvd_list );
 	void set_state_position_value( const int index, const double value ){
 		x_k_k_(index) = value;
 	}

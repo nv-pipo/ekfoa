@@ -63,9 +63,8 @@ void EKFOA::start(){
 		std::cout << "predict = " << time/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
 
 		//Sense environment (process frame)
-		Eigen::MatrixXd features_to_add;
-		std::vector<int> features_to_remove;
-		std::vector<cv::Point2f> features_tracked;
+		std::vector<size_t> features_to_remove;
+		std::vector<cv::Point2f> features_tracked, features_to_add;
 		sprintf(file_path, "%s%04d.pgm", sequence_prefix.c_str(), step);
 //		sprintf(file_path, "%s%03d.png", sequence_prefix.c_str(), step);
 		frame = cv::imread(file_path, CV_LOAD_IMAGE_COLOR);   // Read the file
@@ -111,7 +110,7 @@ void EKFOA::start(){
 	    Eigen::Matrix3d R_inv = R.inverse();
 
 		//Compute the positions and inverse depth variances of all the points in the state
-		for (size_t i=0 ; i<features_tracked.size()+features_to_add.cols() ; i++){
+		for (size_t i=0 ; i<features_tracked.size()+features_to_add.size() ; i++){
 			const int start_feature = 13 + i*6;
 			const int feature_inv_depth_index = start_feature + 5;
 

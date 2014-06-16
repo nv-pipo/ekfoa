@@ -4,7 +4,7 @@ std::string MotionTrackerOF::type(){
 	return std::string("OF");
 }
 
-void MotionTrackerOF::process(cv::Mat & input_2, Eigen::MatrixXd & features_added, std::vector<cv::Point2f> & features_tracked, std::vector<int> & features_removed){
+void MotionTrackerOF::process(cv::Mat & input_2, std::vector<cv::Point2f> & features_added, std::vector<cv::Point2f> & features_tracked, std::vector<size_t> & features_removed){
 	// '1' refers to previous frame
 	// '2' refers to last received (input parameter) frame
 
@@ -122,10 +122,9 @@ void MotionTrackerOF::process(cv::Mat & input_2, Eigen::MatrixXd & features_adde
 	if (num_new_features > 0){
 		//TODO: Try to use some FAST heuristics to prefer unoccupied areas for new features...like a grid and one feature per square.
 //		time = (double)cv::getTickCount();
-		std::vector<cv::Point2f> features_added_cv;
 		cv::goodFeaturesToTrack(
 				input_2_gray,      // InputArray image
-				features_added_cv, // OutputArray corners
+				features_added, // OutputArray corners
 				num_new_features,  // int maxCorners - Number of points to detect
 				0.01,              // double qualityLevel=0.01 (larger is better quality)
 				distance_between_points_, // double minDistance=1
@@ -135,14 +134,12 @@ void MotionTrackerOF::process(cv::Mat & input_2, Eigen::MatrixXd & features_adde
 				0.04              // double k=0.04
 		);
 		//Add new points to the currently tracked features at the beginning:
-		points_tracked_1.insert(points_tracked_1.end(), features_added_cv.begin(), features_added_cv.end());
+		points_tracked_1.insert(points_tracked_1.end(), features_added.begin(), features_added.end());
 
 		//Copy to the "returned" list of new features:
 		//TODO: Do not use EIGEN matrix, return a vector<cv::Point2f> instead for features_added (features_added = features_added_cv):
-		features_added.resize(2, features_added_cv.size());
-		for (size_t i=0 ; i<features_added_cv.size() ; i++){
-			cv::circle(input_2, features_added_cv[i], 3, cv::Scalar(255,0,0), 1);
-			features_added.col(i) << features_added_cv[i].x, features_added_cv[i].y;
+		for (size_t i=0 ; i<features_added.size() ; i++){
+			cv::circle(input_2, features_added[i], 3, cv::Scalar(255,0,0), 1);
 		}
 
 //		time = (double)cv::getTickCount() - time;

@@ -19,7 +19,7 @@ class MotionTracker {
 public:
 	virtual std::string type() = 0;
 
-	virtual void process(cv::Mat & input_2, Eigen::MatrixXd & features_added, std::vector<cv::Point2f> & features_tracked, std::vector<int> & features_removed) = 0;
+	virtual void process(cv::Mat & input_2, std::vector<cv::Point2f> & features_added, std::vector<cv::Point2f> & features_tracked, std::vector<size_t> & features_removed) = 0;
 
 	virtual ~MotionTracker(){}
 };

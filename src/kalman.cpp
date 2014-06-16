@@ -51,7 +51,7 @@ Kalman::Kalman(const Eigen::VectorXd & x_k_k, const Eigen::MatrixXd & p_k_k, dou
 	std_z_ = sigma_image_noise;
 }
 
-void Kalman::delete_features(std::vector<int> & delete_list){
+void Kalman::delete_features(std::vector<size_t> & delete_list){
 	if (delete_list.size()==0)
 		return;
 
@@ -99,12 +99,12 @@ void Kalman::predict_state_and_covariance(const double delta_t){
 	p_k_k_.block(13, 0, size_p_k_k_minus_xv, 13) = (p_k_k_.block(13, 0, size_p_k_k_minus_xv, 13)*F.transpose()).eval();
 }
 
-void Kalman::add_features_inverse_depth( const Camera & cam, const Eigen::MatrixXd & list_uvd ){
-	if (list_uvd.cols() == 0)
+void Kalman::add_features_inverse_depth( const Camera & cam, const std::vector<cv::Point2f> & new_features_uvd_list ){
+	if (new_features_uvd_list.size() == 0)
 		return;
 
 	//num new features
-	int new_features = list_uvd.cols();
+	int new_features = new_features_uvd_list.size();
 	//Where next feature state should start:
 	int insert_point = x_k_k_.rows();
 
@@ -113,9 +113,9 @@ void Kalman::add_features_inverse_depth( const Camera & cam, const Eigen::Matrix
 	p_k_k_.conservativeResize(p_k_k_.rows() + 6*new_features, p_k_k_.cols() + 6*new_features);
 
 	for (int p=0 ; p<new_features ; p++){
-		const Eigen::Vector2d & uv_d = list_uvd.col(p);
-		Eigen::Vector3d xy_u;
-		cam.undistort_center(uv_d, xy_u);
+		Eigen::Vector2d uvd(new_features_uvd_list[p].x, new_features_uvd_list[p].y);
+		Eigen::Vector3d xyu;
+		cam.undistort_center(uvd, xyu);
 
 		//Extract orientation quaterion from state vector. Used to calculate the
 		Eigen::Vector4d qWR(x_k_k_(3), x_k_k_(4), x_k_k_(5), x_k_k_(6));
@@ -123,13 +123,13 @@ void Kalman::add_features_inverse_depth( const Camera & cam, const Eigen::Matrix
 		Eigen::Matrix3d qWR_rotation_matrix;
 		MotionModel::quaternion_matrix(qWR, qWR_rotation_matrix);
 
-		Eigen::Vector3d XYZ_w = qWR_rotation_matrix*xy_u;
+		Eigen::Vector3d XYZ_w = qWR_rotation_matrix*xyu;
 
 		//Add point information to the state:
 		add_a_feature_state_inverse_depth( XYZ_w, insert_point );
 
 		//Add point information to the covariance matrix:
-		add_a_feature_covariance_inverse_depth( cam, uv_d, xy_u, qWR, qWR_rotation_matrix, XYZ_w, insert_point );
+		add_a_feature_covariance_inverse_depth( cam, uvd, xyu, qWR, qWR_rotation_matrix, XYZ_w, insert_point );
 
 		insert_point += 6;
 	}
