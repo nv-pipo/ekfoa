@@ -3,7 +3,7 @@
 boost::mutex Gui::lock_;
 
 Arcball Gui::arcball_;
-GLfloat Gui::zoom_ = 3.f;
+GLfloat Gui::zoom_ = 0.5f;
 GLboolean Gui::is_rotating_ = GL_FALSE;
 
 Eigen::MatrixXd Gui::drone_points_(3, 6); //(six vertex)
@@ -167,7 +167,7 @@ void Gui::framebuffer_size_callback(GLFWwindow* window, int width, int height){
     // Change to the projection matrix and set our viewing volume
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluPerspective(90.0, window_ratio, 0.1f, 1024.0);
+    gluPerspective(110.0, window_ratio, 0.1f, 1024.0);
 }
 
 
@@ -175,7 +175,6 @@ void Gui::update_state_and_cov( const Eigen::Vector3d & camera_pos, const Eigen:
 	//lock
 	lock_.lock();
 
-//	std::cout << "update" << std::endl;
 	XYZs_mu_ = XYZs_mu;
 	XYZs_close_ = XYZs_close;
 	XYZs_far_ = XYZs_far;
@@ -221,7 +220,6 @@ bool Gui::redraw(){
     //Draw "drone":
     draw_drone();
 
-
     //Draw surface:
     draw_surface();
     lock_.unlock();
@@ -234,53 +232,37 @@ bool Gui::redraw(){
 }
 
 void Gui::draw_drone(){
+	glPushMatrix();
+    //The "drone"
+    glScalef(0.01f, 0.01f, 0.01f);
+
+    //TODO: draw shapes with OpenGL primitives: 'glDrawElements'. It will be faster.
+    glColor3f(0.f, 0.f, 0.f);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glLineWidth(2.0);
+    glBegin(GL_TRIANGLE_FAN);
+    for (int i=0 ; i< drone_points_.cols() ; i++){
+    	const Eigen::Vector3d & point = drone_points_.col(i);
+    	glVertex3f(point(0), point(1), point(2));
+    }
+    glEnd();
+    glPopMatrix();
+
     //Draw trajectory:
     glPointSize(2.0);
     glColor3f(0.f, 0.f, 1.f);
     glBegin(GL_POINTS);
     for (size_t i=0 ; i<trajectory.size() ; i++){
-    	glVertex3f(trajectory[i](0), trajectory[i](1), trajectory[i](2));
+    	//remember to cancel the translation of the rotation ( - trajectory.back() ):
+    	glVertex3f(trajectory[i](0)-trajectory.back()(0), trajectory[i](1)-trajectory.back()(1), trajectory[i](2)-trajectory.back()(2));
     }
     glEnd();
 
-    //The "drone"
-    glPushMatrix();
-
-    if (trajectory.size()>0)
-    	glTranslated(trajectory.back()(0), trajectory.back()(1), trajectory.back()(2));
-
-    Eigen::Matrix3d R;
-    MotionModel::quaternion_matrix(camera_orientation_, R);
-
-    //rotate:
-    Eigen::MatrixXd drone_points = R * drone_points_;
-
-    glScalef(0.01f, 0.01f, 0.01f);
-
-    //TODO: draw this with OpenGL primitives: 'glDrawElements'. It will be faster.
-    glColor3f(0.f, 0.f, 1.f);
-    glBegin(GL_POLYGON);
-    for (int i=0 ; i< drone_points.cols() ; i++){
-    	const Eigen::Vector3d & point = drone_points.col(i);
-		glVertex3f(point(0), point(1), point(2));
-    }
-    glEnd();
-
-    glColor3f(0.f, 0.f, 0.f);
-    glLineWidth(2.0);
-    glBegin(GL_LINES);
-    const Eigen::Vector3d & origin = drone_points.col(0);
-    for (int i=0 ; i< drone_points.cols() ; i++){
-    	const Eigen::Vector3d & point = drone_points.col(i);
-    	glVertex3f(origin(0), origin(1), origin(2));
-    	glVertex3f(point(0), point(1), point(2));
-    }
-    glEnd();
-    glPopMatrix();
 }
 
 
 void Gui::draw_surface(){
+	//Since we want the drone static, the whole scene is moving. So have to recenter it to the initial center, that is substract the current drone position ( trajectory.back() )
 
 	glPointSize(5.0);
 
@@ -314,6 +296,7 @@ void Gui::draw_surface(){
 
 	//surface:
 	glColor3f(0, 1, 1);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	std::list<Triangle> surface_faces;
 	glBegin(GL_TRIANGLES);
 	for(Delaunay::Finite_faces_iterator fit = triangulation_.finite_faces_begin(); fit != triangulation_.finite_faces_end(); ++fit) {

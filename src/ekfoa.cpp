@@ -4,20 +4,20 @@
 EKFOA::EKFOA() :
 cam(Camera(
 		//Sample
-//		0.0112,	  		    //d
-//		1.7945 / 0.0112,  //Cx
-//		1.4433 / 0.0112,  //Cy
-//		6.333e-2, //k1
-//		1.390e-2, //k2
-//		2.1735   			//f
+		0.0112,	  		    //d
+		1.7945 / 0.0112,  //Cx
+		1.4433 / 0.0112,  //Cy
+		6.333e-2, //k1
+		1.390e-2, //k2
+		2.1735   			//f
 
 		//ARDRONE:
-		0.0112,	  		    //d
-		303.4832388214409775173407979309558868408203125,                    //Cx
-		185.030127342570523296672035939991474151611328125,                  //Cy
-		0.01315450896536778969958536578133134753443300724029541015625,      //k1
-		0.000395589335442645350336687837256022248766385018825531005859375,  //k2
-		2.1735   			//f
+//		0.0112,	  		    //d
+//		303.4832388214409775173407979309558868408203125,                    //Cx
+//		185.030127342570523296672035939991474151611328125,                  //Cy
+//		0.01315450896536778969958536578133134753443300724029541015625,      //k1
+//		0.000395589335442645350336687837256022248766385018825531005859375,  //k2
+//		2.1735   			//f
 )),
 filter(Kalman(
 		0.0,   //v_0
@@ -106,9 +106,13 @@ void EKFOA::start(){
 		std::vector<Point3d> XYZs_close;
 		std::vector<Point3d> XYZs_far;
 
-		//Compute the positions and inverse depth variances of the points that were successfully tracked (features_tracked.size())
-		for (size_t feature_idx=0 ; feature_idx<features_tracked.size() ; feature_idx++){
-			const int start_feature = 13 + feature_idx*6;
+	    Eigen::Matrix3d R;
+	    MotionModel::quaternion_matrix(x_k_k.segment<4>(3), R);
+	    Eigen::Matrix3d R_inv = R.inverse();
+
+		//Compute the positions and inverse depth variances of all the points in the state
+		for (size_t i=0 ; i<features_tracked.size()+features_to_add.cols() ; i++){
+			const int start_feature = 13 + i*6;
 			const int feature_inv_depth_index = start_feature + 5;
 
 			//As with any normal distribution, nearly all (99.73%) of the possible depths lie within three standard deviations of the mean!
@@ -116,26 +120,26 @@ void EKFOA::start(){
 			const double size_sigma_3 = std::abs(1.0/(x_k_k(feature_inv_depth_index)-sigma_3) - 1.0/(x_k_k(feature_inv_depth_index)+sigma_3));
 
 			const Eigen::VectorXd & yi = x_k_k.segment(start_feature, 6);
-			Eigen::Vector3d XYZ; //mu (mean)
 			Eigen::VectorXd point_close(x_k_k.segment(start_feature, 6));
 			Eigen::VectorXd point_far(x_k_k.segment(start_feature, 6));
-			Eigen::Vector3d XYZ_close;
-			Eigen::Vector3d XYZ_far;
 
 			point_close(5) += sigma_3;
 			point_far(5) -= sigma_3;
 
-			Feature::compute_cartesian(yi, XYZ); //mean
-			Feature::compute_cartesian(point_close, XYZ_close); //mean + 3*sigma. (since inverted signs are also inverted)
-			Feature::compute_cartesian(point_far, XYZ_far); //mean - 3*sigma
+			//The center of the model is ALWAYS the current position of the camera/robot, so have to 'cancel' the current orientation (R_inv) and translation (rWC = x_k_k.head(3)):
+			//Note: It is nicer to do this in the GUI class, as it is only a presention/perspective change. But due to the structure, it was easier to do it here.
+			Eigen::Vector3d XYZ_mu = R_inv * Feature::compute_cartesian(yi) - x_k_k.head(3); //mu (mean)
+			Eigen::Vector3d XYZ_close = R_inv * Feature::compute_cartesian(point_close) - x_k_k.head(3); //mean + 3*sigma. (since inverted signs are also inverted)
+			Eigen::Vector3d XYZ_far = R_inv * Feature::compute_cartesian(point_far) - x_k_k.head(3); //mean - 3*sigma
 
-			XYZs_mu.push_back(Point3d(XYZ(0), XYZ(1), XYZ(2)));
+
+			XYZs_mu.push_back(Point3d(XYZ_mu(0), XYZ_mu(1), XYZ_mu(2)));
 			XYZs_close.push_back(Point3d(XYZ_close(0), XYZ_close(1), XYZ_close(2)));
 			XYZs_far.push_back(Point3d(XYZ_far(0), XYZ_far(1), XYZ_far(2)));
 
 			//If the size that contains the 99.73% of the inverse depth distribution is smaller than the current inverse depth, add it to the surface:
 			if (size_sigma_3 < 1/x_k_k(feature_inv_depth_index)){
-				triangle_list.push_back( std::make_pair( Point2d(features_tracked[feature_idx].x, features_tracked[feature_idx].y), feature_idx));
+				triangle_list.push_back( std::make_pair( Point2d(features_tracked[i].x, features_tracked[i].y), i));
 			}
 
 			if (x_k_k(feature_inv_depth_index) < 0 ){
