@@ -236,6 +236,7 @@ bool Gui::redraw(){
 }
 
 void Gui::draw_drone(){
+	/*
 	glPushMatrix();
     //The "drone"
     glScalef(0.01f, 0.01f, 0.01f);
@@ -251,6 +252,7 @@ void Gui::draw_drone(){
     }
     glEnd();
     glPopMatrix();
+    */
 
     //Draw trajectory:
     glPointSize(2.0);
