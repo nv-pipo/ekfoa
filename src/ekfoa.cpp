@@ -167,7 +167,7 @@ void EKFOA::start(){
 		Point3d closest_point;
 		if (tree.size()>0){
 			// compute closest point and squared distance
-			Point3d point_query(x_k_k(0), x_k_k(1), x_k_k(2));
+			Point3d point_query(0, 0, 0);
 			closest_point = tree.closest_point(point_query);
 			std::cerr << "closest point is: " << closest_point << std::endl;
 			FT sqd = tree.squared_distance(point_query);
