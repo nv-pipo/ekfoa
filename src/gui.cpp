@@ -67,6 +67,9 @@ void Gui::init(void){
     // Background color is white
     glClearColor(1, 1, 1, 0);
 
+    //Large spherical points
+    glEnable( GL_POINT_SMOOTH );
+
     //Limit the number of renderings to 60 per second
     glfwSwapInterval(1);
 
@@ -255,8 +258,8 @@ void Gui::draw_drone(){
     */
 
     //Draw trajectory:
-    glPointSize(2.0);
-    glColor3f(0.f, 0.f, 1.f);
+    glPointSize(1.0);
+    glColor3f(0.7, 0.7, 0.7);
     glBegin(GL_POINTS);
     for (size_t i=0 ; i<trajectory.size() ; i++){
     	//remember to cancel the translation of the rotation ( - trajectory.back() ):
@@ -289,9 +292,9 @@ void Gui::draw_drone(){
 void Gui::draw_surface(){
 	//Since we want the drone static, the whole scene is moving. So have to recenter it to the initial center, that is substract the current drone position ( trajectory.back() )
 
-	glPointSize(5.0);
+	glPointSize(10.0);
 
-	glColor3f(1.f, 0.f, 0.f);
+	glColor3f(0, 1.f, 1.f);
 	glBegin(GL_POINTS);
 	glVertex3f(closest_point_.x(), closest_point_.y(), closest_point_.z());
 
@@ -300,7 +303,7 @@ void Gui::draw_surface(){
 	//Points
 	glPointSize(4.0);
 
-	glColor3f(1.f, 0.f, 1.f);
+	glColor3f(1, 0, 1);
 	glBegin(GL_POINTS);
 	//Draw each point mean estimated position:
 	for (size_t i=0 ; i<XYZs_mu_.size() ; i++){
@@ -320,7 +323,7 @@ void Gui::draw_surface(){
 	glEnd();
 
 	//surface:
-	glColor3f(0, 1, 1);
+	glColor3f(0.6, 0.4, 0.7);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	std::list<Triangle> surface_faces;
 	glBegin(GL_TRIANGLES);
@@ -335,7 +338,7 @@ void Gui::draw_surface(){
 	}
 	glEnd();
 
-	glLineWidth(2.0);
+	glLineWidth(1.0);
 	glColor3f(0, 0, 0);
 	glBegin(GL_LINES);
 	//Draw the segment lines betweeen each two points in the surface:
