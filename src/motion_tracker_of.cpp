@@ -127,7 +127,7 @@ void MotionTrackerOF::process(cv::Mat & input_2, Eigen::MatrixXd & features_adde
 				input_2_gray,      // InputArray image
 				features_added_cv, // OutputArray corners
 				num_new_features,  // int maxCorners - Number of points to detect
-				0.1,              // double qualityLevel=0.01 (larger is better quality)
+				0.01,              // double qualityLevel=0.01 (larger is better quality)
 				distance_between_points_, // double minDistance=1
 				points_correctly_tracked_mask_,    // InputArray mask=noArray(). Where it should not look for new features
 				3,              // int blockSize=3
@@ -138,8 +138,10 @@ void MotionTrackerOF::process(cv::Mat & input_2, Eigen::MatrixXd & features_adde
 		points_tracked_1.insert(points_tracked_1.end(), features_added_cv.begin(), features_added_cv.end());
 
 		//Copy to the "returned" list of new features:
+		//TODO: Do not use EIGEN matrix, return a vector<cv::Point2f> instead for features_added (features_added = features_added_cv):
 		features_added.resize(2, features_added_cv.size());
 		for (size_t i=0 ; i<features_added_cv.size() ; i++){
+			cv::circle(input_2, features_added_cv[i], 3, cv::Scalar(255,0,0), 1);
 			features_added.col(i) << features_added_cv[i].x, features_added_cv[i].y;
 		}
 
