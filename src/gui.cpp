@@ -15,6 +15,8 @@ Point3d Gui::closest_point_;
 
 Eigen::Vector4d Gui::camera_orientation_(1, 0, 0, 0);
 
+Eigen::Matrix3d Gui::cov_rWC_;
+
 Delaunay Gui::triangulation_;
 
 GLFWwindow* Gui::window_;
@@ -171,7 +173,7 @@ void Gui::framebuffer_size_callback(GLFWwindow* window, int width, int height){
 }
 
 
-void Gui::update_state_and_cov( const Eigen::Vector3d & camera_pos, const Eigen::Vector4d & camera_orientation, const std::vector<Point3d> & XYZs_mu, const std::vector<Point3d> & XYZs_close, const std::vector<Point3d> & XYZs_far, const Delaunay & triangulation, const Point3d & closest_point ){
+void Gui::update_draw_parameters( const Eigen::Vector3d & camera_pos, const Eigen::Vector4d & camera_orientation,  const Eigen::Matrix3d & cov_rWC, const std::vector<Point3d> & XYZs_mu, const std::vector<Point3d> & XYZs_close, const std::vector<Point3d> & XYZs_far, const Delaunay & triangulation, const Point3d & closest_point ){
 	//lock
 	lock_.lock();
 
@@ -185,6 +187,8 @@ void Gui::update_state_and_cov( const Eigen::Vector3d & camera_pos, const Eigen:
 
 	triangulation_ = triangulation;
     trajectory.push_back(camera_pos);
+
+    cov_rWC_ = cov_rWC;
 
     //unlock
     lock_.unlock();
@@ -257,6 +261,25 @@ void Gui::draw_drone(){
     	glVertex3f(trajectory[i](0)-trajectory.back()(0), trajectory[i](1)-trajectory.back()(1), trajectory[i](2)-trajectory.back()(2));
     }
     glEnd();
+
+    //Draw confidence of position. One line between origin and sigma*3 on each dimension:
+	const double sigma_3_rWC_X = 3*std::sqrt(cov_rWC_(0, 0)); //3*sqrt(rWC_X_variance) = 3 * sigma_X
+	const double sigma_3_rWC_Y = 3*std::sqrt(cov_rWC_(1, 1)); //3*sqrt(rWC_Y_variance) = 3 * sigma_Y
+	const double sigma_3_rWC_Z = 3*std::sqrt(cov_rWC_(2, 2)); //3*sqrt(rWC_Z_variance) = 3 * sigma_Z
+
+	glLineWidth(3.0);
+	glBegin(GL_LINES);
+	//Draw camera position uncertainty as a line between the 0 and 3*sigma of the mean in each axis. The mean is 0, because the drone is at the origin of the coordinate system:
+	glColor3f(1, 0, 0);
+	glVertex3f(             0, 0, 0);
+	glVertex3f( sigma_3_rWC_X, 0, 0);
+	glColor3f(0, 1, 0);
+	glVertex3f(0,              0, 0);
+	glVertex3f(0, -sigma_3_rWC_Y, 0);
+	glColor3f(0, 0, 1);
+	glVertex3f(0, 0,              0);
+	glVertex3f(0, 0,  sigma_3_rWC_Z);
+	glEnd();
 
 }
 

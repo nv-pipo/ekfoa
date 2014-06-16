@@ -54,7 +54,7 @@ public:
 	static bool redraw();
 	static void init();
 	static void release();
-	static void update_state_and_cov( const Eigen::Vector3d & camera_pos, const Eigen::Vector4d & camera_orientation, const std::vector<Point3d> & XYZs_mu, const std::vector<Point3d> & XYZs_close, const std::vector<Point3d> & XYZs_far, const Delaunay & triangulation, const Point3d & closest_point);
+	static void update_draw_parameters( const Eigen::Vector3d & camera_pos, const Eigen::Vector4d & camera_orientation, const Eigen::Matrix3d & cov_rWC, const std::vector<Point3d> & XYZs_mu, const std::vector<Point3d> & XYZs_close, const std::vector<Point3d> & XYZs_far, const Delaunay & triangulation, const Point3d & closest_point);
 
 private:
 	static boost::mutex lock_;
@@ -69,6 +69,7 @@ private:
 	static std::vector<Point3d> XYZs_close_;
 	static std::vector<Point3d> XYZs_far_;
 	static Point3d closest_point_;
+	static Eigen::Matrix3d cov_rWC_;
 
 	static Delaunay triangulation_;
 

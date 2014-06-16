@@ -182,7 +182,7 @@ void EKFOA::start(){
 		cv::imshow("Camera input", frame);
 
 		//Notify the gui of the new state:
-		Gui::update_state_and_cov(x_k_k.head<3>(), x_k_k.segment<4>(3), XYZs_mu, XYZs_close, XYZs_far, triangulation, closest_point);
+		Gui::update_draw_parameters(x_k_k.head<3>(), x_k_k.segment<4>(3), p_k_k.block<3, 3>(0, 0), XYZs_mu, XYZs_close, XYZs_far, triangulation, closest_point);
 
 
 		//PAUSE:
