@@ -308,4 +308,7 @@ void Kalman::update( const Camera & cam, const std::vector<cv::Point2f> & featur
 
 	//rows:
 	p_k_k_.block(0, 3, p_k_k_.rows(), 4).applyOnTheRight(Jnorm.transpose()); // p_k_k(:, 4:7) = p_k_k(:, 4:7) * Jnorm'
+
+	//Don't forget to normalize the orientation in the state
+	x_k_k_.segment<4>(3).normalize();
 }
