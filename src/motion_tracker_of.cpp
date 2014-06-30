@@ -37,7 +37,7 @@ void MotionTrackerOF::process(cv::Mat & input_2, std::vector<Features_extra> & f
 
 		//Copy the predicted feature location to the OF points_tracked_2, it will try to find the feature appearance around the copied point.
 		points_tracked_2.resize(features_extra.size());
-		for (int i=0 ; i<features_extra.size() ; i++){
+		for (size_t i=0 ; i<features_extra.size() ; i++){
 			points_tracked_2[i].x = features_extra[i].h(0);
 			points_tracked_2[i].y = features_extra[i].h(1);
 		}
@@ -174,7 +174,7 @@ void MotionTrackerOF::process(cv::Mat & input_2, std::vector<Features_extra> & f
 }
 
 // determine which tracked point should be accepted. Rejected by: reverse OF match, OF status (OF and reverseOF) or RANSAC)
-bool MotionTrackerOF::accept_tracked_point(int i){
+bool MotionTrackerOF::accept_tracked_point(size_t i){
 	// cv::norm(points_tracked_1_reverse[i]-points_tracked_1[i])) < 1 is the distance between the original feature and the estimated original feature (going from frame THIS to PREVIOUS)
 	// statusLk is whether framePrev->frameCurr optical flow says it got a good tracking
 	// statusLkReverse is whether frameCurr->framePrev optical flow says it got a good tracking

@@ -35,7 +35,7 @@ private:
 	std::vector<uchar> status_of_reverse_; // status of tracked features (Optical Flow second)
 	std::vector<float> err;    // error of tracked features (Optical Flow)
 
-	bool accept_tracked_point(int i);
+	bool accept_tracked_point(size_t i);
 };
 
 #endif
