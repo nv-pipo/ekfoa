@@ -56,7 +56,7 @@ void Kalman::delete_features(std::vector<Features_extra> & features_extra){
 	std::vector<size_t> delete_list;
 
 	//TODO: have the cleanup of features_extra here as well
-	for (int i=0 ; i<features_extra.size() ; i++){
+	for (size_t i=0 ; i<features_extra.size() ; i++){
 		if (features_extra[i].is_valid == false){
 			delete_list.push_back(i);
 		}
@@ -299,7 +299,7 @@ void Kalman::update(const Camera & cam, std::vector<Features_extra> & features_e
 	MotionModel::quaternion_matrix(qWR, qWR_rotation_matrix);
 
 	//compute h Jacobian: 'H' for each feature:
-	for(int i=0; i<features_extra.size(); i++) {
+	for(size_t i=0; i<features_extra.size(); i++) {
 		if (features_extra[i].is_valid){
 			int yi_start_pos = 13 + i*6;
 			Eigen::VectorXd yi = x_k_k_.segment(yi_start_pos, 6); //feature_state
