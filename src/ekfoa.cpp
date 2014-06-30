@@ -158,7 +158,7 @@ void EKFOA::process(cv::Mat & frame, const double delta_t){
 		// compute closest point and squared distance
 		Point3d point_query(0, 0, 0);
 		closest_point = tree.closest_point(point_query);
-		std::cerr << "closest point is: " << closest_point << std::endl;
+		std::cout << "closest point is: " << closest_point << std::endl;
 		FT sqd = tree.squared_distance(point_query);
 		std::cout << "squared distance: " << sqd << std::endl;
 	}
