@@ -26,7 +26,7 @@ bool Feature::compute_h( const Camera & cam, const Eigen::Vector3d & rW, const E
 Eigen::Vector3d Feature::compute_cartesian( const Eigen::VectorXd & yi){
 	//TODO: Asserts
 
-	const Eigen::VectorXd & yi_rW = yi.head(3); //camera orientation when it was first seen.
+	const Eigen::VectorXd & yi_rW = yi.head(3); //camera position when it was first seen.
 	double theta = yi(3);
 	double phi = yi(4);
 	double rho = yi(5);

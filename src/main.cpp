@@ -10,8 +10,8 @@ void ekfoa(){
 	EKFOA ekfoa;
 	cv::Mat frame;
 	//Sequence path and initial image
-	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/ekfmonoslam/rawoutput";
-//	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/ardrone/fly_indoors2/img";
+//	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/ekfmonoslam/rawoutput";
+	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/ardrone/fly_indoors2/img";
 	int initIm = 100;
 	int lastIm = 2000;
 	double delta_t = 1; //TODO: take time delta from timestamp of when the image was taken
@@ -24,8 +24,8 @@ void ekfoa(){
 	for (int step=initIm+1 ; step<lastIm ; step++){
 		std::cout << "step: " << step << std::endl;
 
-		sprintf(file_path, "%s%04d.pgm", sequence_prefix.c_str(), step);
-//		sprintf(file_path, "%s%03d.png", sequence_prefix.c_str(), step);
+//		sprintf(file_path, "%s%04d.pgm", sequence_prefix.c_str(), step);
+		sprintf(file_path, "%s%03d.png", sequence_prefix.c_str(), step);
 		frame = cv::imread(file_path, CV_LOAD_IMAGE_COLOR);   // Read the file
 
 		ekfoa.process(frame, delta_t);

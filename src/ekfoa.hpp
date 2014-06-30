@@ -3,6 +3,7 @@
 
 #include <stdio.h> //sprintf
 
+#include <utility>  // std::pair
 #include <iostream> //cout
 #include <vector>   //vector
 #include <opencv2/highgui/highgui.hpp> //imread

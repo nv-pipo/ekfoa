@@ -11,13 +11,15 @@ public:
 
 	std::string type();
 
-	void process(cv::Mat & input_2, std::vector<cv::Point2f> & features_added, std::vector<cv::Point2f> & features_tracked, std::vector<size_t> & features_removed);
+	void process(cv::Mat & input_2, std::vector<Features_extra> & features_extra, std::vector<cv::Point2f> & features_added);
 
 	~MotionTrackerOF(){}
 private:
 
 	int min_number_of_features_in_image_;
 	int distance_between_points_;
+
+	cv::Rect image_dimensions_;
 
 	// '1' refers to previous frame
 	// '2' refers to last received (input parameter) frame

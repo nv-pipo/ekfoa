@@ -312,7 +312,7 @@ void KalmanTestCase::test_delete_features () {
 				1.0    //standar deviation for measurement noise
 		);
 
-	std::vector<int> delete_list;
+	std::vector<size_t> delete_list;
 
 	delete_list.push_back(0);
 	delete_list.push_back(2);

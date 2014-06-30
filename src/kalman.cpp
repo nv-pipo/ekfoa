@@ -51,15 +51,27 @@ Kalman::Kalman(const Eigen::VectorXd & x_k_k, const Eigen::MatrixXd & p_k_k, dou
 	std_z_ = sigma_image_noise;
 }
 
-void Kalman::delete_features(std::vector<size_t> & delete_list){
+void Kalman::delete_features(std::vector<Features_extra> & features_extra){
+
+	std::vector<size_t> delete_list;
+
+	//TODO: have the cleanup of features_extra here as well
+	for (int i=0 ; i<features_extra.size() ; i++){
+		if (features_extra[i].is_valid == false){
+			delete_list.push_back(i);
+		}
+	}
+
 	if (delete_list.size()==0)
 		return;
+
+	features_extra.erase(std::remove_if(features_extra.begin(), features_extra.end(), Kalman::is_feature_valid), features_extra.end());
 
 	int new_size = x_k_k_.rows();
 
 	//Start deleting from the last feature to be deleted (simplifies and optimizes the way it is done):
-	for(int i = ((int)delete_list.size())-1; i >= 0; i--) {
-		unsigned int start_dst = 13 + delete_list[i]*6; //the feature to be delete starts at: xv_size + feature_index*6.
+	for(size_t i = delete_list.size(); i > 0; i--) {
+		unsigned int start_dst = 13 + delete_list[i-1]*6; //the feature to be delete starts at: xv_size + feature_index*6.
 		unsigned int start_src = start_dst + 6; //next feature starts at 'start_dst + 6'
 		unsigned int size_rest = x_k_k_.rows() - start_src; //relevant size minus space that does not need to change
 
@@ -73,6 +85,7 @@ void Kalman::delete_features(std::vector<size_t> & delete_list){
 
 		//shift columns left. Of covariance matrix:
 		p_k_k_.block(0, start_dst, new_size, size_rest) = p_k_k_.block(0, start_src, new_size, size_rest);
+
 	}
 
 	x_k_k_.conservativeResize(new_size);
@@ -241,14 +254,43 @@ void Kalman::add_a_feature_state_inverse_depth( const Eigen::VectorXd & XYZ_w, c
 }
 
 /*
+ * compute_h:
+ * Computes 'h' for each feature, 'hi' is the predicted image position of a feature.
+ */
+void Kalman::compute_features_h(const Camera & cam, std::vector<Features_extra> & features_extra){
+	Eigen::Vector3d rW = x_k_k_.head(3); //current camera position
+	Eigen::Vector4d qWR = x_k_k_.segment(3, 4);//current camera orientation
+	Eigen::Matrix3d qWR_rotation_matrix;
+	MotionModel::quaternion_matrix(qWR, qWR_rotation_matrix);
+
+	//compute 'h' and its Jacobian 'H' for each feature:
+	for(int yi_start_pos = 13; yi_start_pos < x_k_k_.rows(); yi_start_pos+=6) {
+
+		Eigen::VectorXd yi = x_k_k_.segment(yi_start_pos, 6); //feature_state
+		features_extra.push_back(Features_extra());
+
+		Feature::compute_h( cam, rW, qWR_rotation_matrix, yi, features_extra.back().h );
+
+		// if the feature is prediction is in front of the camera, mark it as valid:
+		if (yi[5] > 0){//yi[5] is the depth.
+			features_extra.back().is_valid = true;
+		} else {
+			features_extra.back().is_valid = false;
+			std::cout << "invalidated: " << features_extra.size()-1 << std::endl;
+		}
+	}
+}
+
+/*
  * update:
  * With the camera parameters and observations (mapped to the current state features) it corrects the state and covariance matrix of the EKF.
  */
-void Kalman::update( const Camera & cam, const std::vector<cv::Point2f> & features_observations ){
+void Kalman::update(const Camera & cam, std::vector<Features_extra> & features_extra){
+	assert((x_k_k_.rows()-13)/6 == features_extra.size());
+	assert((p_k_k_.rows()-13)/6 == features_extra.size());
 
-	//TODO: Assert the size of the observations with the current size of the x_k_k_ and p_k_k_
 	//Return if there were no observations:
-	if (features_observations.size() == 0)
+	if (features_extra.size() == 0)
 		return;
 
 	Eigen::Vector3d rW = x_k_k_.head(3); //current camera position
@@ -256,31 +298,26 @@ void Kalman::update( const Camera & cam, const std::vector<cv::Point2f> & featur
 	Eigen::Matrix3d qWR_rotation_matrix;
 	MotionModel::quaternion_matrix(qWR, qWR_rotation_matrix);
 
-	std::vector<Eigen::Vector2d> list_h;
-	std::vector<Eigen::MatrixXd> list_H;
+	//compute h Jacobian: 'H' for each feature:
+	for(int i=0; i<features_extra.size(); i++) {
+		if (features_extra[i].is_valid){
+			int yi_start_pos = 13 + i*6;
+			Eigen::VectorXd yi = x_k_k_.segment(yi_start_pos, 6); //feature_state
 
-	//compute 'h' and its Jacobian 'H':
-	for(int yi_start_pos = 13; yi_start_pos < x_k_k_.rows(); yi_start_pos+=6) {
-
-		Eigen::VectorXd yi = x_k_k_.segment(yi_start_pos, 6); //feature_state
-		Eigen::Vector2d hi; //this feature state estimation represented in image coordinates
-		Eigen::MatrixXd Hi; //this feature derivative against the current state (x_k_k)
-
-		Feature::compute_h( cam, rW, qWR_rotation_matrix, yi, hi );
-		Feature::compute_H( cam, rW, qWR, qWR_rotation_matrix, x_k_k_, yi, yi_start_pos, hi, Hi );
-		list_h.push_back(hi);
-		list_H.push_back(Hi);
+			Feature::compute_H( cam, rW, qWR, qWR_rotation_matrix, x_k_k_, yi, yi_start_pos, features_extra[i].h, features_extra[i].H );
+		}
 	}
-
-	Eigen::VectorXd z(features_observations.size()*2); //each observation uses 2 doubles, for U and V.
-	Eigen::VectorXd h(features_observations.size()*2); //each observation uses 2 doubles, for the predicted U and V.
-	Eigen::MatrixXd H(features_observations.size()*2, x_k_k_.rows());
+	Eigen::VectorXd z(features_extra.size()*2); //each observation uses 2 doubles, for U and V.
+	Eigen::VectorXd h(features_extra.size()*2); //each observation uses 2 doubles, for the predicted U and V.
+	Eigen::MatrixXd H(features_extra.size()*2, x_k_k_.rows());
 	Eigen::MatrixXd R;
-	R.setIdentity(features_observations.size()*2, features_observations.size()*2);
-	for (size_t i = 0; i != list_h.size(); i++) {
-		z.segment(i*2, 2) = Eigen::Vector2d(features_observations[i].x, features_observations[i].y);
-		h.segment(i*2, 2) = list_h[i];
-		H.block(i*2, 0, 2, x_k_k_.rows()) = list_H[i];
+	R.setIdentity(features_extra.size()*2, features_extra.size()*2);
+	for (size_t i = 0; i != features_extra.size(); i++) {
+		if (features_extra[i].is_valid){
+			z.segment(i*2, 2) = features_extra[i].z;
+			h.segment(i*2, 2) = features_extra[i].h;
+			H.block(i*2, 0, 2, x_k_k_.rows()) = features_extra[i].H;
+		}
 	}
 
 	//TODO: Optimize in a per feature basis and maybe parallelize, as Joan Sola's "SLAM course.pdf" suggest.

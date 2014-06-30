@@ -16,19 +16,31 @@
 #include <vector>   //vector
 
 
+struct Features_extra{
+	bool is_valid;
+	cv::Point2f z_cv; //the feature actual observation coordinates as an openCV point
+	Eigen::Vector2d z; //the feature actual observation coordinates
+	Eigen::Vector2d h; //the feature state estimation represented in image coordinates
+	Eigen::MatrixXd H; //the feature derivative against the current state (x_k_k)
+};
+
 
 class Kalman {
 public:
 	Kalman(double v_0, double std_v_0, double w_0, double std_w_0, double sigma_a, double sigma_alpha, double sigma_image_noise);
 	Kalman(const Eigen::VectorXd & x_k_k, const Eigen::MatrixXd & p_k_k, double sigma_a, double sigma_alpha, double sigma_image_noise);
 
-	void delete_features(std::vector<size_t> & delete_list);
+	static bool is_feature_valid(const Features_extra & feature_extra){
+	    return feature_extra.is_valid == false;
+	}
+	void delete_features(std::vector<Features_extra> & features_extra);
 	void predict_state_and_covariance(const double delta_t);
-	void add_features_inverse_depth( const Camera & cam, const std::vector<cv::Point2f> & new_features_uvd_list );
-	void set_state_position_value( const int index, const double value ){
+	void add_features_inverse_depth(const Camera & cam, const std::vector<cv::Point2f> & new_features_uvd_list);
+	void set_state_position_value(const int index, const double value){
 		x_k_k_(index) = value;
 	}
-	void update( const Camera & cam, const std::vector<cv::Point2f> & features_observations );
+	void compute_features_h(const Camera & cam, std::vector<Features_extra> & features_extra);
+	void update(const Camera & cam, std::vector<Features_extra> & features_extra);
 	Eigen::VectorXd x_k_k() const { return x_k_k_; }
 	Eigen::MatrixXd p_k_k() const { return p_k_k_; }
 

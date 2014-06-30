@@ -4,16 +4,25 @@ std::string MotionTrackerOF::type(){
 	return std::string("OF");
 }
 
-void MotionTrackerOF::process(cv::Mat & input_2, std::vector<cv::Point2f> & features_added, std::vector<cv::Point2f> & features_tracked, std::vector<size_t> & features_removed){
+void MotionTrackerOF::process(cv::Mat & input_2, std::vector<Features_extra> & features_extra, std::vector<cv::Point2f> & features_added){
 	// '1' refers to previous frame
 	// '2' refers to last received (input parameter) frame
+
+	assert(features_extra.size() == points_tracked_1.size());
+
+	std::vector<cv::Point2f> features_tracked;
 
 	if ( ! input_1_gray_.data ){
 		//At first frame, initialize the points_currently_tracked_mask_ Mat:
 		points_correctly_tracked_mask_ = cv::Mat(input_2.size(), CV_8UC1);
+
+		//Set the dimensions of the input image. So that later we can easily check if the tracked point is inside it:
+		image_dimensions_.x = 0;
+		image_dimensions_.y = 0;
+		image_dimensions_.height = input_2.rows;
+		image_dimensions_.width = input_2.cols;
 	}
 
-	features_tracked.reserve(min_number_of_features_in_image_); //Don't want a lot of reallocations later, so reserve to the maximum
 	points_correctly_tracked_mask_.setTo(cv::Scalar(255));
 
 //	double time = 0;
@@ -26,6 +35,13 @@ void MotionTrackerOF::process(cv::Mat & input_2, std::vector<cv::Point2f> & feat
 	if (points_tracked_1.size() > 0) {
 //		time = (double)cv::getTickCount();
 
+		//Copy the predicted feature location to the OF points_tracked_2, it will try to find the feature appearance around the copied point.
+		points_tracked_2.resize(features_extra.size());
+		for (int i=0 ; i<features_extra.size() ; i++){
+			points_tracked_2[i].x = features_extra[i].h(0);
+			points_tracked_2[i].y = features_extra[i].h(1);
+		}
+
 		//TODO: Use 'OPTFLOW_USE_INITIAL_FLOW' with the kalman filter prediction. So that the estimations are considered the initial estimate
 		// Find position of feature in new image
 		cv::calcOpticalFlowPyrLK(
@@ -33,7 +49,11 @@ void MotionTrackerOF::process(cv::Mat & input_2, std::vector<cv::Point2f> & feat
 				points_tracked_1,            // input: interesting features points
 				points_tracked_2,            // output: the respective positions (in second frame) of the input points
 				status_of_,                  // output status vector (of unsigned chars)
-				err                          // output vector of errors
+				err,                          // output vector of errors
+				cv::Size(21,21),
+				3,
+				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 0.01),
+				cv::OPTFLOW_USE_INITIAL_FLOW
 		);
 		//Use the same images in reverse order to verify that the points we got in the previous OpticFlow were correct
 		cv::calcOpticalFlowPyrLK(
@@ -41,7 +61,11 @@ void MotionTrackerOF::process(cv::Mat & input_2, std::vector<cv::Point2f> & feat
 				points_tracked_2,             // input: interesting features points
 				points_tracked_1_reverse,     // output: the respective positions (in second frame) of the input points
 				status_of_reverse_,           // tracking success
-				err                           // tracking error
+				err,                           // tracking error
+				cv::Size(21,21),
+				3,
+				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 0.01),
+				0
 		);
 //		time = (double)cv::getTickCount() - time;
 //		std::cout << "time OF = " << time/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
@@ -50,13 +74,15 @@ void MotionTrackerOF::process(cv::Mat & input_2, std::vector<cv::Point2f> & feat
 		std::vector<cv::Point2f> p2;
 		std::vector<uchar> status_ransac;
 		std::vector<size_t> removed_of;
-		for(size_t idx=0; idx < points_tracked_1.size() ; idx++) {
-			if (accept_tracked_point(idx)){
-				p1.push_back(points_tracked_1[idx]);
-				p2.push_back(points_tracked_2[idx]);
+		for(size_t i=0; i < points_tracked_1.size() ; i++) {
+			//TODO: features_extra[i].is_valid can be checked before, for optimization, but then synchronization needs to be handled.
+			if (features_extra[i].is_valid && accept_tracked_point(i) && points_tracked_2[i].inside(image_dimensions_)){
+				p1.push_back(points_tracked_1[i]);
+				p2.push_back(points_tracked_2[i]);
 			} else {
 				//could not track it, so mark for removal it:
-				removed_of.push_back(idx);
+				removed_of.push_back(i);
+				features_extra[i].is_valid = false;
 			}
 		}
 
@@ -64,54 +90,48 @@ void MotionTrackerOF::process(cv::Mat & input_2, std::vector<cv::Point2f> & feat
 
 		cv::Scalar color;
 
-		size_t idx_removed_of = 0;
-		for(size_t idx=0; idx < p1.size() ; idx++) {
+		int counter_removed_of=0;//counter_removed_of is keeps track of the number of features smaller than the current feature
+		for(size_t i=0; i < p1.size() ; i++) {
 			color = cv::Scalar(0, 0, 255, 255);//red
 
-			if (status_ransac[idx]){
+			//Count if there were any features removed by OF, it will be an offset
+			while(counter_removed_of<removed_of.size() && i+counter_removed_of >= removed_of[counter_removed_of]){
+				counter_removed_of++;
+			}
+
+			if (status_ransac[i]){
 				//Could track it!, so add current position as sensed input:
-				features_tracked.push_back(p2[idx]);
+				features_extra[i+counter_removed_of].z(0) = p2[i].x;
+				features_extra[i+counter_removed_of].z(1) = p2[i].y;
+				features_extra[i+counter_removed_of].z_cv = p2[i];
+
+				features_tracked.push_back(p2[i]);
 
 				//make sure new features are not above or too close to this feature:
-				cv::circle(points_correctly_tracked_mask_, p2[idx], distance_between_points_, cv::Scalar(0), CV_FILLED);
+				cv::circle(points_correctly_tracked_mask_, p2[i], distance_between_points_, cv::Scalar(0), CV_FILLED);
 
 				//color it in  the frame as green:
 				color = cv::Scalar(0, 255, 0, 255);//green
-			} else {
-				//idx+idx_removed_of : the index do delete is the current index plus the number of features removed by OF with lower index
+				//Write the feature index next to it:
+				std::stringstream text;
+				text << features_tracked.size()-1;
+				cv::Point2f text_start(p2[i].x+5, p2[i].y+5);
+				cv::putText(input_2, text.str(), text_start, cv::FONT_HERSHEY_SIMPLEX, 0.5, color);
 
-				//check if OF removed features with lower index:
-				while (idx_removed_of < removed_of.size() && removed_of[idx_removed_of] < idx+idx_removed_of){
-					features_removed.push_back(removed_of[idx_removed_of]);
-					idx_removed_of++;
-				}
-				//could not track it, so mark for removal it:
-				features_removed.push_back(idx+idx_removed_of);
+			} else {
+				//Feature disappeared from image or was not correctly tracked, so mark it for deletion:
+				features_extra[i+counter_removed_of].is_valid = false;
 			}
 
-
 			//Draw circle at current position:
-			cv::circle(input_2, p2[idx], 3, color, 1);
+			cv::circle(input_2, p2[i], 3, color, 1);
 
 			//Draw line between start position and end position:
 			cv::line(input_2,
-					p1[idx],   // initial position
-					p2[idx],   // new position
+					p1[i],   // initial position
+					p2[i],   // new position
 					color);
-
-			//Write the feature index next to it:
-			std::stringstream text;
-			text << idx;
-			cv::Point2f text_start(p2[idx].x+5, p2[idx].y+5);
-			cv::putText(input_2, text.str(), text_start, cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(255, 0, 255));
 		}
-
-		//Add any remaining features removed by Optical Flow:
-		while (idx_removed_of < removed_of.size()){
-			features_removed.push_back(removed_of[idx_removed_of]);
-			idx_removed_of++;
-		}
-		std::cout << "removed_of.size(): " << removed_of.size() << std::endl;
 
 		//Finally, remember the correctly tracked points (for next call):
 		points_tracked_1 = features_tracked;
@@ -136,10 +156,13 @@ void MotionTrackerOF::process(cv::Mat & input_2, std::vector<cv::Point2f> & feat
 		//Add new points to the currently tracked features at the beginning:
 		points_tracked_1.insert(points_tracked_1.end(), features_added.begin(), features_added.end());
 
-		//Copy to the "returned" list of new features:
-		//TODO: Do not use EIGEN matrix, return a vector<cv::Point2f> instead for features_added (features_added = features_added_cv):
+		//Draw the newly added features in blue:
 		for (size_t i=0 ; i<features_added.size() ; i++){
 			cv::circle(input_2, features_added[i], 3, cv::Scalar(255,0,0), 1);
+			std::stringstream text;
+			text << features_tracked.size() + i;
+			cv::Point2f text_start(features_added[i].x+5, features_added[i].y+5);
+			cv::putText(input_2, text.str(), text_start, cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255,0,0));
 		}
 
 //		time = (double)cv::getTickCount() - time;

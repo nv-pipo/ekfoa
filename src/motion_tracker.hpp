@@ -14,12 +14,14 @@
 
 #include <vector>
 
+#include "kalman.hpp" //Features_extra
+
 //MotionTracker interface:
 class MotionTracker {
 public:
 	virtual std::string type() = 0;
 
-	virtual void process(cv::Mat & input_2, std::vector<cv::Point2f> & features_added, std::vector<cv::Point2f> & features_tracked, std::vector<size_t> & features_removed) = 0;
+	virtual void process(cv::Mat & input_2, std::vector<Features_extra> & features_extra, std::vector<cv::Point2f> & features_added) = 0;
 
 	virtual ~MotionTracker(){}
 };
