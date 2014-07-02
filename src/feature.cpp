@@ -6,7 +6,7 @@
  * Using the predicted state of the feature (yi), compute 'h'. Where 'h' is the state interpretation in image coordinates.
  * Basically it projects the predicted 3D point into the image.
  */
-bool Feature::compute_h( const Camera & cam, const Eigen::Vector3d & rW, const Eigen::Matrix3d & qWR_rotation_matrix, const Eigen::VectorXd & yi, Eigen::Vector2d & hi ){
+bool Feature::compute_h(const Camera & cam, const Eigen::Vector3d & rW, const Eigen::Matrix3d & qWR_rotation_matrix, const Eigen::VectorXd & yi, Eigen::Vector2d & hi){
 	//TODO: provide a better integration of the tracking algorithm. 'h' can be used to significantly reduce the search space of the tracker:
 
 	Eigen::Vector3d hrl;
@@ -23,7 +23,7 @@ bool Feature::compute_h( const Camera & cam, const Eigen::Vector3d & rW, const E
 	return true;
 }
 
-Eigen::Vector3d Feature::compute_cartesian( const Eigen::VectorXd & yi){
+Eigen::Vector3d Feature::compute_cartesian(const Eigen::VectorXd & yi){
 	//TODO: Asserts
 
 	const Eigen::VectorXd & yi_rW = yi.head(3); //camera position when it was first seen.
@@ -37,7 +37,7 @@ Eigen::Vector3d Feature::compute_cartesian( const Eigen::VectorXd & yi){
 	return yi_rW + (1/rho)*mi;
 }
 
-Eigen::Vector3d Feature::compute_unshifted_3d_position( const Eigen::Vector3d & rW, const Eigen::VectorXd & yi){
+Eigen::Vector3d Feature::compute_unshifted_3d_position(const Eigen::Vector3d & rW, const Eigen::VectorXd & yi){
 
 	const Eigen::Vector3d & yi_rW = yi.head<3>(); //camera orientation when it was first seen.
 	double theta = yi(3);
@@ -54,7 +54,7 @@ Eigen::Vector3d Feature::compute_unshifted_3d_position( const Eigen::Vector3d & 
  * compute_H:
  * Computes the derivative of the function h with respect to x, a Jacobian of dh/dx = H.
  */
-void Feature::compute_H( const Camera & cam, const Eigen::Vector3d & rW, const Eigen::Vector4d & qWR, const Eigen::Matrix3d & qWR_rotation_matrix, const Eigen::VectorXd & x_k_k, const Eigen::VectorXd & yi, const int yi_start_pos, const Eigen::Vector2d & hi, Eigen::MatrixXd & Hi){
+void Feature::compute_H(const Camera & cam, const Eigen::Vector3d & rW, const Eigen::Vector4d & qWR, const Eigen::Matrix3d & qWR_rotation_matrix, const Eigen::VectorXd & x_k_k, const Eigen::VectorXd & yi, const int yi_start_pos, const Eigen::Vector2d & hi, Eigen::MatrixXd & Hi){
 
 	Eigen::Matrix3d qWR_rotation_matrix_inverse = qWR_rotation_matrix.inverse();
 
