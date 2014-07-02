@@ -100,7 +100,7 @@ void EKFOA::process(const double delta_t, cv::Mat & frame, Eigen::Vector3d & cur
 	Eigen::Matrix3d orientation_R;
 	MotionModel::quaternion_matrix(x_k_k.segment<4>(3), orientation_R);
 	axes_orientation_and_confidence.applyOnTheLeft(orientation_R); // == R * axes_orientation_and_confidence
-	for (size_t axis=0 ; axis<axes_orientation_and_confidence.cols() ; axis++){
+	for (int axis=0 ; axis<axes_orientation_and_confidence.cols() ; axis++){
 		//Set the length to be 3*sigma:
 		axes_orientation_and_confidence.col(axis) *= 3*std::sqrt(p_k_k(axis, axis)); //the first 3 positions of the cov matrix define the confidence for the position
 		//Translate origin:
@@ -115,7 +115,7 @@ void EKFOA::process(const double delta_t, cv::Mat & frame, Eigen::Vector3d & cur
 
 	//Compute the 3d positions and inverse depth variances of all the points in the state
 	int i=0; //Feature counter
-	for (size_t start_feature=13 ; start_feature<x_k_k.rows() ; start_feature+=6){
+	for (int start_feature=13 ; start_feature<x_k_k.rows() ; start_feature+=6){
 		const int feature_inv_depth_index = start_feature + 5;
 
 		//As with any normal distribution, nearly all (99.73%) of the possible depths lie within three standard deviations of the mean!

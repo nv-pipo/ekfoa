@@ -90,7 +90,7 @@ void MotionTrackerOF::process(cv::Mat & input_2, std::vector<Features_extra> & f
 
 		cv::Scalar color;
 
-		int counter_removed_of=0;//counter_removed_of is keeps track of the number of features smaller than the current feature
+		size_t counter_removed_of=0;//counter_removed_of is keeps track of the number of features smaller than the current feature
 		for(size_t i=0; i < p1.size() ; i++) {
 			color = cv::Scalar(0, 0, 255, 255);//red
 
