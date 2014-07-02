@@ -51,7 +51,7 @@ private:
 	MotionTrackerOF motion_tracker;
 public:
 	EKFOA();
-	void process(const double delta_t, cv::Mat & frame, std::list<Eigen::Vector3d> & trajectory, Eigen::Matrix3d & axes_orientation_and_confidence, std::vector<Point3d> (& XYZs)[3], Delaunay & triangulation, Point3d & closest_point);
+	void process(const double delta_t, cv::Mat & frame, Eigen::Vector3d & position, Eigen::Matrix3d & axes_orientation_and_confidence, std::vector<Point3d> (& XYZs)[3], Delaunay & triangulation, Point3d & closest_point);
 	const Kalman & kalman_filter() const { return filter; }
 };
 

@@ -37,7 +37,10 @@ void ekfoa(){
 
 		Delaunay triangulation;
 		Point3d closest_point;
-		ekfoa.process(delta_t, frame, trajectory, axes_orientation_and_confidence, XYZs, triangulation, closest_point);
+		Eigen::Vector3d position;
+		//Add a space for the current position in the trajectory list:
+		ekfoa.process(delta_t, frame, position, axes_orientation_and_confidence, XYZs, triangulation, closest_point);
+		trajectory.push_back(position);
 
 		//Show the processed frame:
 		cv::imshow("Camera input", frame);
