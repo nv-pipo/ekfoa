@@ -3,9 +3,9 @@
 
 #include <stdio.h> //sprintf
 
-#include <utility>  // std::pair
-#include <iostream> //cout
-#include <vector>   //vector
+#include <utility>  //std::pair
+#include <iostream> //std::cout
+#include <vector>   //std::vector
 #include <opencv2/highgui/highgui.hpp> //imread
 
 //HOME DIR:
@@ -16,7 +16,6 @@
 #include "camera.hpp"
 #include "kalman.hpp"
 #include "motion_tracker_of.hpp"
-#include "gui.hpp"
 
 //Delaunay triangulation:
 #include <CGAL/Exact_predicates_exact_constructions_kernel.h>
@@ -43,6 +42,7 @@ typedef CGAL::AABB_triangle_primitive<K_surface, Iterator> Primitive;
 typedef CGAL::AABB_traits<K_surface, Primitive> AABB_triangle_traits;
 typedef CGAL::AABB_tree<AABB_triangle_traits> Tree;
 
+
 class EKFOA {
 private:
 	Camera cam;
@@ -51,7 +51,7 @@ private:
 	MotionTrackerOF motion_tracker;
 public:
 	EKFOA();
-	void process(cv::Mat & frame, const double delta_t);
+	void process(const double delta_t, cv::Mat & frame, std::list<Eigen::Vector3d> & trajectory, Eigen::Matrix3d & axes_orientation_and_confidence, std::vector<Point3d> (& XYZs)[3], Delaunay & triangulation, Point3d & closest_point);
 	const Kalman & kalman_filter() const { return filter; }
 };
 

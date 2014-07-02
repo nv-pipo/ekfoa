@@ -54,7 +54,7 @@ public:
 	static bool redraw();
 	static void init();
 	static void release();
-	static void update_draw_parameters( const Eigen::Vector3d & camera_pos, const Eigen::Vector4d & camera_orientation, const Eigen::Matrix3d & cov_rWC, const std::vector<Point3d> & XYZs_mu, const std::vector<Point3d> & XYZs_close, const std::vector<Point3d> & XYZs_far, const Delaunay & triangulation, const Point3d & closest_point);
+	static void update_draw_parameters(const std::list<Eigen::Vector3d> & trajectory, const Eigen::Matrix3d & position_orientation_confidence, std::vector<Point3d> (& XYZs)[3], Delaunay & triangulation, Point3d & closest_point);
 
 private:
 	static boost::mutex lock_;
@@ -63,20 +63,14 @@ private:
 	static GLfloat zoom_;
 	static GLboolean is_rotating_;
 
-	static Eigen::MatrixXd drone_points_;
-
-	static std::vector<Point3d> XYZs_mu_;
-	static std::vector<Point3d> XYZs_close_;
-	static std::vector<Point3d> XYZs_far_;
-	static Point3d closest_point_;
-	static Eigen::Matrix3d cov_rWC_;
-
 	static Delaunay triangulation_;
+	static Point3d closest_point_;
 
 	static GLFWwindow* window_;
 
-	static std::vector<Eigen::Vector3d> trajectory;
-	static Eigen::Vector4d camera_orientation_;
+	static std::list<Eigen::Vector3d> trajectory_;
+	static Eigen::Matrix3d axes_orientation_and_confidence_;
+	static std::vector<Point3d> XYZs_[3];// for positions of 'mu', 'close' and 'far'
 
 
 	static void draw_drone();

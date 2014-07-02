@@ -35,7 +35,7 @@ motion_tracker(MotionTrackerOF(
 
 }
 
-void EKFOA::process(cv::Mat & frame, const double delta_t){
+void EKFOA::process(const double delta_t, cv::Mat & frame, std::list<Eigen::Vector3d> & trajectory, Eigen::Matrix3d & axes_orientation_and_confidence, std::vector<Point3d> (& XYZs)[3], Delaunay & triangulation, Point3d & closest_point){
 	double time;
 	std::vector<cv::Point2f> features_to_add;
 	std::vector<Features_extra> features_extra;
@@ -80,30 +80,48 @@ void EKFOA::process(cv::Mat & frame, const double delta_t){
 
 
 	/*
-	 * Triangulation and surface construction:
+	 * Triangulation, surface and GUI data setting:
 	 */
 	time = (double)cv::getTickCount();
+
 	std::vector< std::pair<Point2d, size_t> > triangle_list;
+	std::list<Triangle> triangles_list_3d;
 
 	const Eigen::VectorXd & x_k_k = filter.x_k_k();
 	const Eigen::MatrixXd & p_k_k = filter.p_k_k();
 
-	std::vector<Point3d> XYZs_mu;
-	std::vector<Point3d> XYZs_close;
-	std::vector<Point3d> XYZs_far;
+	//Set the position, so the GUI can draw it:
+	trajectory.push_back(x_k_k.segment<3>(0));
+	if (trajectory.size()>200)
+		trajectory.pop_front();
 
-	Eigen::Matrix3d R;
-	MotionModel::quaternion_matrix(x_k_k.segment<4>(3), R);
-	Eigen::Matrix3d R_inv = R.inverse();
+	//Set the axes orientation and confidence:
+	axes_orientation_and_confidence.setIdentity();//axes_orientation_and_confidence stores in each column one axis (X, Y, Z)
+	axes_orientation_and_confidence *= 10; //make the lines larger...ROS!?
+	//Apply rotation matrix:
+	Eigen::Matrix3d orientation_R;
+	MotionModel::quaternion_matrix(x_k_k.segment<4>(3), orientation_R);
+	axes_orientation_and_confidence.applyOnTheLeft(orientation_R); // == R * axes_orientation_and_confidence
+	for (size_t axis=0 ; axis<axes_orientation_and_confidence.cols() ; axis++){
+		//Set the length to be 3*sigma:
+		axes_orientation_and_confidence.col(axis) *= 3*std::sqrt(p_k_k(axis, axis)); //the first 3 positions of the cov matrix define the confidence for the position
+		//Translate origin:
+		axes_orientation_and_confidence.col(axis) += trajectory.back();
+	}
 
-	//Compute the positions and inverse depth variances of all the points in the state
-	for (size_t i=0 ; i<features_extra.size()+features_to_add.size() ; i++){
-		const int start_feature = 13 + i*6;
+	int num_features = (x_k_k.rows()-13)/6;
+	XYZs[0].resize(num_features);
+	XYZs[1].resize(num_features);
+	XYZs[2].resize(num_features);
+
+
+	//Compute the 3d positions and inverse depth variances of all the points in the state
+	int i=0; //Feature counter
+	for (size_t start_feature=13 ; start_feature<x_k_k.rows() ; start_feature+=6){
 		const int feature_inv_depth_index = start_feature + 5;
 
 		//As with any normal distribution, nearly all (99.73%) of the possible depths lie within three standard deviations of the mean!
 		const double sigma_3 = std::sqrt(p_k_k(feature_inv_depth_index, feature_inv_depth_index)); //sqrt(depth_variance)
-		const double size_sigma_3 = std::abs(1.0/(x_k_k(feature_inv_depth_index)-sigma_3) - 1.0/(x_k_k(feature_inv_depth_index)+sigma_3));
 
 		const Eigen::VectorXd & yi = x_k_k.segment(start_feature, 6);
 		Eigen::VectorXd point_close(x_k_k.segment(start_feature, 6));
@@ -113,18 +131,18 @@ void EKFOA::process(cv::Mat & frame, const double delta_t){
 		point_close(5) += sigma_3;
 		point_far(5) -= sigma_3;
 
+		Eigen::Vector3d XYZ_mu = (Feature::compute_cartesian(yi) - x_k_k.head(3) + trajectory.back()); //mu (mean)
+		Eigen::Vector3d XYZ_close = (Feature::compute_cartesian(point_close) - x_k_k.head(3) + trajectory.back()); //mean + 3*sigma. (since inverted signs are also inverted)
+		Eigen::Vector3d XYZ_far = (Feature::compute_cartesian(point_far) - x_k_k.head(3) + trajectory.back()); //mean - 3*sigma
+
 		//The center of the model is ALWAYS the current position of the camera/robot, so have to 'cancel' the current orientation (R_inv) and translation (rWC = x_k_k.head(3)):
 		//Note: It is nicer to do this in the GUI class, as it is only a presention/perspective change. But due to the structure, it was easier to do it here.
-		Eigen::Vector3d XYZ_mu = R_inv * Feature::compute_cartesian(yi) - x_k_k.head(3); //mu (mean)
-		Eigen::Vector3d XYZ_close = R_inv * Feature::compute_cartesian(point_close) - x_k_k.head(3); //mean + 3*sigma. (since inverted signs are also inverted)
-		Eigen::Vector3d XYZ_far = R_inv * Feature::compute_cartesian(point_far) - x_k_k.head(3); //mean - 3*sigma
-
-
-		XYZs_mu.push_back(Point3d(XYZ_mu(0), XYZ_mu(1), XYZ_mu(2)));
-		XYZs_close.push_back(Point3d(XYZ_close(0), XYZ_close(1), XYZ_close(2)));
-		XYZs_far.push_back(Point3d(XYZ_far(0), XYZ_far(1), XYZ_far(2)));
+		XYZs[0][i] = Point3d(XYZ_mu(0), XYZ_mu(1), XYZ_mu(2)); //mu (mean)
+		XYZs[1][i] = Point3d(XYZ_close(0), XYZ_close(1), XYZ_close(2)); //mean + 3*sigma. (since inverted signs are also inverted)
+		XYZs[2][i] = Point3d(XYZ_far(0), XYZ_far(1), XYZ_far(2)); //mean - 3*sigma
 
 		//If the size that contains the 99.73% of the inverse depth distribution is smaller than the current inverse depth, add it to the surface:
+		const double size_sigma_3 = std::abs(1.0/(x_k_k(feature_inv_depth_index)-sigma_3) - 1.0/(x_k_k(feature_inv_depth_index)+sigma_3));
 		if (size_sigma_3 < 1/x_k_k(feature_inv_depth_index)){
 			triangle_list.push_back(std::make_pair(Point2d(features_extra[i].z(0), features_extra[i].z(1)), i));
 		}
@@ -132,10 +150,9 @@ void EKFOA::process(cv::Mat & frame, const double delta_t){
 		if (x_k_k(feature_inv_depth_index) < 0 ){
 			std::cout << "feature behind the camera!!! : idx=" << i << ", value=" << x_k_k(feature_inv_depth_index) << std::endl;
 		}
+		i++;
 	}
 
-	std::list<Triangle> triangles_list_3d;
-	Delaunay triangulation;
 	triangulation.insert(triangle_list.begin(), triangle_list.end());
 
 	cv::Scalar delaunay_color = cv::Scalar(255, 0, 0); //blue
@@ -147,27 +164,19 @@ void EKFOA::process(cv::Mat & frame, const double delta_t){
 		line(frame, features_extra[face->vertex(2)->info()].z_cv, features_extra[face->vertex(0)->info()].z_cv, delaunay_color, 1);
 
 		//Add the face of the linked 3d points of this 2d triangle:
-		triangles_list_3d.push_back(Triangle(XYZs_close[face->vertex(0)->info()], XYZs_close[face->vertex(1)->info()], XYZs_close[face->vertex(2)->info()]));
+		triangles_list_3d.push_back(Triangle(XYZs[1][face->vertex(0)->info()], XYZs[1][face->vertex(1)->info()], XYZs[1][face->vertex(2)->info()])); //XYZs[1] == close
 	}
 
 	// constructs AABB tree
 	Tree tree(triangles_list_3d.begin(), triangles_list_3d.end());
 
-	Point3d closest_point;
 	if (tree.size()>0){
 		// compute closest point and squared distance
-		Point3d point_query(0, 0, 0);
+		Point3d point_query(trajectory.back()[0], trajectory.back()[1], trajectory.back()[2]);
 		closest_point = tree.closest_point(point_query);
-		std::cout << "closest point is: " << closest_point << std::endl;
-		FT sqd = tree.squared_distance(point_query);
-		std::cout << "squared distance: " << sqd << std::endl;
+//		FT sqd = tree.squared_distance(point_query);
 	}
-
 
 	time = (double)cv::getTickCount() - time;
 	std::cout << "obstacle avoidance = " << time/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
-
-
-	//Notify the gui of the new state: TODO: this should go to the main.cpp (in ros the gui is handled differently)
-	Gui::update_draw_parameters(x_k_k.head<3>(), x_k_k.segment<4>(3), p_k_k.block<3, 3>(0, 0), XYZs_mu, XYZs_close, XYZs_far, triangulation, closest_point);
 }
