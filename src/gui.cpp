@@ -224,14 +224,15 @@ bool Gui::redraw(){
 
 void Gui::draw_drone(){
     //Draw trajectory:
-    glPointSize(1.0);
-    glColor3f(0.7, 0.7, 0.7);
+    glPointSize(0.5);
+    glColor4f(0.7, 0.7, 0.7, 0.2);
     glBegin(GL_POINTS);
     for (std::list<Eigen::Vector3d>::iterator pos = trajectory_.begin(); pos != trajectory_.end(); pos++){
     	glVertex3f((*pos)(0), (*pos)(1), (*pos)(2));
     }
     glEnd();
 
+    //Draw the camera position/orientation, where the length of each axis is proportional to its confidence (comes from the covariance matrix)
     glLineWidth(3.0);
     glBegin(GL_LINES);
     //each line goes from current position to the point that represents the confidence and orientation according to the current orientation quaternion and covariance matrix. X = red, Y = green and Z = blue
