@@ -286,8 +286,10 @@ void Kalman::compute_features_h(const Camera & cam, std::vector<Features_extra> 
  * With the camera parameters and observations (mapped to the current state features) it corrects the state and covariance matrix of the EKF.
  */
 void Kalman::update(const Camera & cam, std::vector<Features_extra> & features_extra){
-	assert((x_k_k_.rows()-13)/6 == features_extra.size());
-	assert((p_k_k_.rows()-13)/6 == features_extra.size());
+	assert(x_k_k_.rows()>0);
+	assert(p_k_k_.rows()>0);
+	assert(((size_t)x_k_k_.rows()-13)/6 == features_extra.size());
+	assert(((size_t)p_k_k_.rows()-13)/6 == features_extra.size());
 
 	//Return if there were no observations:
 	if (features_extra.size() == 0)
