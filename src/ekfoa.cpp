@@ -28,11 +28,14 @@ filter(Kalman(
 		0.007, //standar deviation for angular acceleration noise
 		1.0    //standar deviation for measurement noise
 )),
-motion_tracker(MotionTrackerOF(
-		30, //min_number_of_features_in_image
+//motion_tracker(MotionTrackerOF(
+////		30, //min_number_of_features_in_image
+////		20  //distance_between_points
+//)){
+motion_tracker(MotionTrackerMatching(
+		100, //min_number_of_features_in_image
 		20  //distance_between_points
-)) {
-
+		)) {
 }
 
 void EKFOA::process(const double delta_t, cv::Mat & frame, Eigen::Vector3d & current_position, Eigen::Matrix3d & axes_orientation_and_confidence, std::vector<Point3d> (& XYZs)[3], Delaunay & triangulation, Point3d & closest_point){

@@ -25,7 +25,7 @@ void MotionTrackerOF::process(cv::Mat & input_2, std::vector<Features_extra> & f
 
 	points_correctly_tracked_mask_.setTo(cv::Scalar(255));
 
-//	double time = 0;
+	double time = 0;
 
 	cv::Mat input_2_gray;
 	//Create a copy of the input in grayscale:
@@ -33,7 +33,7 @@ void MotionTrackerOF::process(cv::Mat & input_2, std::vector<Features_extra> & f
 
 	//If there are any features to track:
 	if (points_tracked_1.size() > 0) {
-//		time = (double)cv::getTickCount();
+		time = (double)cv::getTickCount();
 
 		//Copy the predicted feature location to the OF points_tracked_2, it will try to find the feature appearance around the copied point.
 		points_tracked_2.resize(features_extra.size());
@@ -67,9 +67,10 @@ void MotionTrackerOF::process(cv::Mat & input_2, std::vector<Features_extra> & f
 				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 0.01),
 				0
 		);
-//		time = (double)cv::getTickCount() - time;
-//		std::cout << "time OF = " << time/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
+		time = (double)cv::getTickCount() - time;
+		std::cout << "OpticalFlow = " << time/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
 
+		time = (double)cv::getTickCount();
 		std::vector<cv::Point2f> p1;
 		std::vector<cv::Point2f> p2;
 		std::vector<uchar> status_ransac;
@@ -87,6 +88,9 @@ void MotionTrackerOF::process(cv::Mat & input_2, std::vector<Features_extra> & f
 		}
 
 		cv::findFundamentalMat(p1, p2, cv::FM_RANSAC, 0.5, 0.99, status_ransac);
+
+		time = (double)cv::getTickCount() - time;
+		std::cout << "RANSAC = " << time/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
 
 		cv::Scalar color;
 
@@ -130,7 +134,7 @@ void MotionTrackerOF::process(cv::Mat & input_2, std::vector<Features_extra> & f
 			cv::line(input_2,
 					p1[i],   // initial position
 					p2[i],   // new position
-					color);
+					cv::Scalar(255, 0, 0));
 		}
 
 		//Finally, remember the correctly tracked points (for next call):
@@ -140,8 +144,9 @@ void MotionTrackerOF::process(cv::Mat & input_2, std::vector<Features_extra> & f
 	int num_new_features = min_number_of_features_in_image_ - features_tracked.size();
 
 	if (num_new_features > 0){
+		std::cout << "num_new_features: " << num_new_features << std::endl;
 		//TODO: Try to use some FAST heuristics to prefer unoccupied areas for new features...like a grid and one feature per square.
-//		time = (double)cv::getTickCount();
+		time = (double)cv::getTickCount();
 		cv::goodFeaturesToTrack(
 				input_2_gray,      // InputArray image
 				features_added, // OutputArray corners
@@ -165,8 +170,8 @@ void MotionTrackerOF::process(cv::Mat & input_2, std::vector<Features_extra> & f
 			cv::putText(input_2, text.str(), text_start, cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255,0,0));
 		}
 
-//		time = (double)cv::getTickCount() - time;
-//		std::cout << "goodFeaturesToTrack = " << time/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
+		time = (double)cv::getTickCount() - time;
+		std::cout << "goodFeaturesToTrack = " << time/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
 	}
 
 	//Remember this frame for next call:

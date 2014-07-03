@@ -3,6 +3,8 @@
 
 #include "motion_tracker.hpp"
 
+#include <opencv2/video/tracking.hpp> //calcOpticalFlowPyrLK
+
 class MotionTrackerOF: public MotionTracker {
 public:
 	MotionTrackerOF(int min_number_of_features_in_image, int distance_between_points) :

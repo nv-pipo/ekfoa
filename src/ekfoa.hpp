@@ -16,6 +16,7 @@
 #include "camera.hpp"
 #include "kalman.hpp"
 #include "motion_tracker_of.hpp"
+#include "motion_tracker_matching.hpp"
 
 //Delaunay triangulation:
 #include <CGAL/Exact_predicates_exact_constructions_kernel.h>
@@ -48,7 +49,8 @@ private:
 	Camera cam;
 	Kalman filter;
 	cv::Mat frame;
-	MotionTrackerOF motion_tracker;
+//	MotionTrackerOF motion_tracker;
+	MotionTrackerMatching motion_tracker;
 public:
 	EKFOA();
 	void process(const double delta_t, cv::Mat & frame, Eigen::Vector3d & position, Eigen::Matrix3d & axes_orientation_and_confidence, std::vector<Point3d> (& XYZs)[3], Delaunay & triangulation, Point3d & closest_point);

@@ -8,7 +8,6 @@
 #include <opencv2/core/core.hpp> //circle, line, Point2f, putText
 #include <opencv2/calib3d/calib3d.hpp> //findFundamentalMat
 #include <opencv2/imgproc/imgproc.hpp> //cvtColor
-#include <opencv2/video/tracking.hpp> //calcOpticalFlowPyrLK
 
 #include <Eigen/Dense> //Matrix
 
