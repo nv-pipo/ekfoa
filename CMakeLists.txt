@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 2.4.6)
 project (ekfoa)
 
 if(COMMAND cmake_policy)
-   cmake_policy(SET CMP0003 NEW)
+   cmake_policy(SET CMP0003 NEW) #Do not produce search linker paths for libraries linked via full path
+   cmake_policy(SET CMP0017 NEW) #Prefer calls include() or find_package() from the CMake module directory over CMAKE_MODULE_PATH
 endif(COMMAND cmake_policy)
 
 #set the default path for built executables to the "bin" directory
@@ -57,6 +58,11 @@ include_directories(${GLFW_INCLUDE_DIRS})
 if (CMAKE_SYSTEM_PROCESSOR MATCHES "armv7l")
    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__ARM_NEON__ -fPIC -march=armv7-a -mfloat-abi=hard -mfpu=neon -ftree-vectorize -mvectorize-with-neon-quad -mcpu=cortex-a9 -mtune=cortex-a9")
 endif()
+
+#get_cmake_property(_variableNames VARIABLES)
+#foreach (_variableName ${_variableNames})
+#    message(STATUS "${_variableName}=${${_variableName}}")
+#endforeach()
 
 add_executable(ekfoa src/main.cpp src/gui.cpp src/opengl_utils/arcball.cpp src/ekfoa.cpp src/camera.cpp src/feature.cpp src/kalman.cpp src/motion_model.cpp src/motion_tracker_of.cpp src/motion_tracker_matching.cpp src/print.cpp)
 target_link_libraries(ekfoa ${CGAL_LIBRARY} ${GMP_LIBRARIES} ${MPFR_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${OPENGL_glu_LIBRARY} ${GLFW_STATIC_LIBRARIES})
