@@ -53,8 +53,6 @@ private:
 	Eigen::VectorXd x_k_k_;    //State vector
 	Eigen::MatrixXd p_k_k_;    //Covariance matrix
 
-	void quaternion_from_angular_velocity(const Eigen::Vector3d & av, Eigen::Quaterniond & qwt);
-
 	void add_a_feature_state_inverse_depth( const Eigen::VectorXd & XYZ_w, const int insert_point);
 
 	void add_a_feature_covariance_inverse_depth( const Camera & cam, const Eigen::Vector2d & uvd, const Eigen::Vector3d & undistorted_projection, const Eigen::Vector4d & qWR, const Eigen::Matrix3d & qWR_rotation_matrix , const Eigen::Vector3d & XYZ_w, const int insert_point );
