@@ -64,5 +64,5 @@ endif()
 #    message(STATUS "${_variableName}=${${_variableName}}")
 #endforeach()
 
-add_executable(ekfoa src/main.cpp src/gui.cpp src/opengl_utils/arcball.cpp src/ekfoa.cpp src/camera.cpp src/feature.cpp src/kalman.cpp src/motion_model.cpp src/motion_tracker_of.cpp src/motion_tracker_matching.cpp src/print.cpp)
+add_executable(ekfoa src/main.cpp src/gui.cpp src/opengl_utils/arcball.cpp src/ekfoa.cpp src/camera.cpp src/feature.cpp src/kalman.cpp src/motion_model.cpp src/motion_tracker_of.cpp src/print.cpp)
 target_link_libraries(ekfoa ${CGAL_LIBRARY} ${GMP_LIBRARIES} ${MPFR_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${OpenCV_LIBS} ${Boost_LIBRARIES} ${OPENGL_glu_LIBRARY} ${GLFW_STATIC_LIBRARIES})
