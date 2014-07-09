@@ -6,6 +6,13 @@
 #include <Eigen/Dense> //Matrix3d
 #include <iostream> //cout
 
+/*
+ * Notation:
+ * uvu = undistorted image coordinate
+ * uvd = distorted image coordinate
+ * p = point in cartesian coordinates with origin on the current camera position
+ */
+
 class Camera {
 private:
 	Eigen::Matrix3d K_;
@@ -35,46 +42,48 @@ public:
 	}
 
 
-	void undistort_fm( const Eigen::Vector2d & uvd, Eigen::Vector2d & uvu) const;
-	void distort_fm( const Eigen::Vector2d & uv, Eigen::Vector2d & uvd ) const;
-	void undistort_center( const Eigen::Vector2d & uvd, Eigen::Vector3d & homogeneous_projection )  const;
-	void jacob_undistor_fm( const Eigen::Vector2d & uvd, Eigen::Matrix2d & m) const{
-		double ud=uvd(0);
-		double vd=uvd(1);
-		double xd=(uvd(0)-Cx_)*d_; //d_ = dx
-		double yd=(uvd(1)-Cy_)*d_; //d_ = dy
+	/*
+	 * undistort:
+	 * Remove the distortion of an image coordinate: uvd -> uvu
+	 */
+	void undistort( const Eigen::Vector2d & uvd, Eigen::Vector2d & uvu) const;
 
-		double rd2=xd*xd+yd*yd;
-		double rd4=rd2*rd2;
+	/*
+	 * Jacobian of undistort function wrt. distorted image coords. jacobian(uvu, uvd): UVU_uvd
+	 */
+	void jacob_undistort(const Eigen::Vector2d & uvd, Eigen::Matrix2d & UVU_uvd) const;
 
-		double uu_ud=(1+k1_*rd2+k2_*rd4)+(ud-Cx_)*(k1_+2*k2_*rd2)*(2*(ud-Cx_)*d_*d_);
-		double vu_vd=(1+k1_*rd2+k2_*rd4)+(vd-Cy_)*(k1_+2*k2_*rd2)*(2*(vd-Cy_)*d_*d_);
+	/*
+	 * distort:
+	 * Apply the radial distortion to an image coordinate: uvu -> uvd
+	 */
+	void distort( const Eigen::Vector2d & uvu, Eigen::Vector2d & uvd ) const;
 
-		double uu_vd=(ud-Cx_)*(k1_+2*k2_*rd2)*(2*(vd-Cy_)*d_*d_);
-		double vu_ud=(vd-Cy_)*(k1_+2*k2_*rd2)*(2*(ud-Cx_)*d_*d_);
+	/*
+	 * Takes a distorted image pixel (uvd) and transforms it to homogeneous coordinates (undistorted and centered aroundZ axis)
+	 */
+	void uvd_to_homogeneous( const Eigen::Vector2d & uvd, Eigen::Vector3d & homogeneous_projection )  const;
 
-		m << uu_ud,uu_vd,
-			 vu_ud,vu_vd;
-	}
-	void get_dgc_dhu(Eigen::Matrix<double, 3, 2> & dgc_dhu) const{
-		dgc_dhu = dgc_dhu_;
-	}
+	/*
+	 * Takes an undistorted image pixel (uvu) and transforms it to homogeneous coordinates (undistorted and centered aroundZ axis)
+	 */
+	void uvu_to_homogeneous( const Eigen::Vector2d & uvu, Eigen::Vector3d & homogeneous_projection )  const;
 
-	void get_dhu_dhrl(const Eigen::Vector3d & hC, Eigen::Matrix<double, 2, 3> & dhu_dhrl) const{
-		double k = 1/d_; //ku = 1/camera.dx = kv = 1/dy; d = dx = dy;
-	    double hCx = hC(0);
-	    double hCy = hC(1);
-	    double hCz = hC(2);
-	    dhu_dhrl << +f_*k/(hCz),            0, -hCx*f_*k/(hCz*hCz),
-	                          0,  +f_*k/(hCz), -hCy*f_*k/(hCz*hCz);
-	}
-	void hc_to_undistorted( const Eigen::Vector3d & homogeneous, Eigen::Vector2d & uvu ) const{
-//		double ku = 1/dx; // dx=d_
-//		double kv = 1/dy; // dy=d_
-		double k = 1/d_; // dx = dy = d => ku = 1/d = kv = 1/d
-	    uvu(0) = Cx_ + (homogeneous(0)/homogeneous(2))*f_*k;
-	    uvu(1) = Cy_ + (homogeneous(1)/homogeneous(2))*f_*k;
-	}
+	/*
+	 * % Jacobian of undistorted image point to homogeneous function wrt. uvu. jacobian(uvu_to_homogeneous, uvu) = UVUTOHOMOGENEOUS_uvu
+	 */
+	void jacob_uvu_to_homogeneous(Eigen::Matrix<double, 3, 2> & UVUTOHOMOGENEOUS_uvu) const;
+
+	/*
+	 * Point p projection to undistorted image coordinates?: p to uvu
+	 */
+	void project_p_to_uvu( const Eigen::Vector3d & p, Eigen::Vector2d & uvu ) const;
+
+	/*
+	 * Jacobian of point projection function wrt. to point p: jacobian(UVU_p)
+	 */
+	void jacob_project_p_to_uvu(const Eigen::Vector3d & p, Eigen::Matrix<double, 2, 3> & UVU_p) const;
+
 };
 
 #endif

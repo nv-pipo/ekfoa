@@ -128,7 +128,7 @@ void Kalman::add_features_inverse_depth( const Camera & cam, const std::vector<c
 	for (int p=0 ; p<new_features ; p++){
 		Eigen::Vector2d uvd(new_features_uvd_list[p].x, new_features_uvd_list[p].y);
 		Eigen::Vector3d xyu;
-		cam.undistort_center(uvd, xyu);
+		cam.uvd_to_homogeneous(uvd, xyu);
 
 		//Extract orientation quaterion from state vector. Used to calculate the
 		Eigen::Vector4d qWR(x_k_k_(3), x_k_k_(4), x_k_k_(5), x_k_k_(6));
@@ -187,19 +187,19 @@ void Kalman::add_a_feature_covariance_inverse_depth( const Camera & cam, const E
 	dyprima_dgw.block<1, 3>(4, 0) = dphi_dgw;
 
 	Eigen::Matrix<double, 3, 2> dgc_dhu;
-	cam.get_dgc_dhu(dgc_dhu);
+	cam.jacob_uvu_to_homogeneous(dgc_dhu);
 
 	Eigen::Matrix2d dhu_dhd;
-	cam.jacob_undistor_fm( uv_d, dhu_dhd );
+	cam.jacob_undistort( uv_d, dhu_dhd );
 
-	Eigen::Matrix<double, 5, 2> dyprima_dhd = dyprima_dgw*qWR_rotation_matrix*dgc_dhu*dhu_dhd; //dgw_dgc = R_wc = qWR.toRotationMatrix();
+	Eigen::Matrix<double, 5, 2> dyprima_dhd = dyprima_dgw*qWR_rotation_matrix*dgc_dhu*dhu_dhd; //dgw_dgc = qWR_rotation_matrix
 
 	Eigen::Matrix<double, 6, 3> dy_dhd;
 	dy_dhd.setZero();
 	dy_dhd.block<5, 2>(0, 0) = dyprima_dhd;
 	dy_dhd(5,2) = 1;
 
-	Eigen::Matrix3d Padd;
+	Eigen::Matrix3d Padd; //TODO: std_pxl should be parametrizable
 	Padd.setIdentity(); //Initial std_pxl = 1, and std_rho = 1. Block(0,0,1,1) = I * std_pxl^2, pos(2, 2) = std_rho^2
 
 

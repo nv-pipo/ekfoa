@@ -9,20 +9,27 @@
 bool Feature::compute_h(const Camera & cam, const Eigen::Vector3d & rW, const Eigen::Matrix3d & qWR_rotation_matrix, const Eigen::VectorXd & yi, Eigen::Vector2d & hi){
 	//TODO: provide a better integration of the tracking algorithm. 'h' can be used to significantly reduce the search space of the tracker:
 
-	Eigen::Vector3d hrl;
-	hrl = qWR_rotation_matrix.transpose() * Feature::compute_unshifted_3d_position(rW, yi);
+	//cartesian point (p_from_cam_perspective = [x y z]'), with the current camera position/orientation as the origin of the cartesian coord system.
+	Eigen::Vector3d p_from_cam_perspective;
+	p_from_cam_perspective = qWR_rotation_matrix.transpose() * Feature::compute_unshifted_3d_position(rW, yi);
 
+	//project
 	Eigen::Vector2d uvu;
-	cam.hc_to_undistorted(hrl, uvu);
+	cam.project_p_to_uvu(p_from_cam_perspective, uvu);//
 
 	Eigen::Vector2d uvd;
-	cam.distort_fm(uvu, uvd);
+	cam.distort(uvu, uvd);
 
 	hi = uvd;
 
+	//TODO: Invalidate point if the cartesian representation is behind the camera (z < 0). z = p_from_cam_perspective(2)
 	return true;
 }
 
+/*
+ * compute_cartesian:
+ * Returns the cartesian point coordinate (p = [x y z]') with the world origin as the cartesian coord system
+ */
 Eigen::Vector3d Feature::compute_cartesian(const Eigen::VectorXd & yi){
 	//TODO: Asserts
 
@@ -66,14 +73,15 @@ void Feature::compute_H(const Camera & cam, const Eigen::Vector3d & rW, const Ei
 	 */
 	//dh_drw: predicted state in image coordinates(hi) against position (rW)
 	Eigen::Matrix2d dhd_dhu;
-	cam.jacob_undistor_fm( hi, dhd_dhu );
+	cam.jacob_undistort( hi, dhd_dhu );
 	dhd_dhu = dhd_dhu.inverse().eval();
 
 	Eigen::Matrix<double, 2, 3>  dhu_dhrl;
-	Eigen::Vector3d hC;
+
+	Eigen::Vector3d hC; //Cartesian point. p = [x y z]', cartesian coord system origin is current camera position (rW, qWR)
 	hC = qWR_rotation_matrix.inverse() * Feature::compute_unshifted_3d_position(rW, yi);
 
-	cam.get_dhu_dhrl(hC, dhu_dhrl);
+	cam.jacob_project_p_to_uvu(hC, dhu_dhrl);
 
 	Eigen::Matrix3d dhrl_drw = - qWR_rotation_matrix_inverse * yi(5);
 
