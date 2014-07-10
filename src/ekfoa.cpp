@@ -90,7 +90,7 @@ void EKFOA::process(const double delta_t, cv::Mat & frame, Eigen::Vector3d & rW,
 
 	//Add new features
 	time = (double)cv::getTickCount();
-	filter.add_features_inverse_depth( cam, features_to_add );
+	filter.add_features_inverse_depth(cam, features_to_add);
 	time = (double)cv::getTickCount() - time;
 	std::cout << "add_features = " << time/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
 
