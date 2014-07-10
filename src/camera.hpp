@@ -10,35 +10,37 @@
  * Notation:
  * uvu = undistorted image coordinate
  * uvd = distorted image coordinate
+ * xyu = undistorted coordinates with origin in the Z axis
+ * xyd = distorted coordinates with origin in the Z axis
  * p = point in cartesian coordinates with origin on the current camera position
  */
 
 class Camera {
 private:
 	Eigen::Matrix3d K_;
-	double d_;
-	double Cx_;
-	double Cy_;
+	double fx_;
+	double fy_;
+	double cx_;
+	double cy_;
 	double k1_;
 	double k2_;
-	double f_;
 	Eigen::Matrix<double, 3, 2> dgc_dhu_;
 
 public:
-	Camera(double d, double Cx, double Cy, double k1, double k2, double f) :
-		d_(d),
-		Cx_(Cx),
-		Cy_(Cy),
+	Camera(double fx, double fy, double cx, double cy, double k1, double k2) :
+		fx_(fx),
+		fy_(fy),
+		cx_(cx),
+		cy_(cy),
 		k1_(k1),
-		k2_(k2),
-		f_(f){
-		K_ << f/d,   0, Cx,
-		        0, f/d, Cy,
-		 	    0,   0,  1;
+		k2_(k2){
+		K_ << fx,  0, cx,
+		       0, fy, cy,
+		 	   0,  0,  1;
 
-		dgc_dhu_ << +1/K_(0,0), 0, //fku =  K_(1,1);
-				    0, +1/K_(1,1), //fkv =  K_(2,2);
-				    0, 0;
+		dgc_dhu_ << 1/fx,    0,
+				       0, 1/fy,
+				       0,    0;
 	}
 
 

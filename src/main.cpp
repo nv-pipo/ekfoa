@@ -11,9 +11,9 @@ void ekfoa(){
 	cv::Mat frame;
 	//Sequence path and initial image
 //	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/ekfmonoslam/rawoutput";
-	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/1394/img";
+	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/1394/downsample/img";
 //	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/ardrone/held_indoors2/img";
-//	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/ardrone/fly_indoors2/img";
+//	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/ardrone/fly_indoors/img";
 	int initIm = 0;
 	int lastIm = 2000;
 	double delta_t = 1; //TODO: take time delta from timestamp of when the image was taken

@@ -11,11 +11,11 @@ bool Feature::compute_h(const Camera & cam, const Eigen::Vector3d & rW, const Ei
 
 	//cartesian point (p_from_cam_perspective = [x y z]'), with the current camera position/orientation as the origin of the cartesian coord system.
 	Eigen::Vector3d p_from_cam_perspective;
-	p_from_cam_perspective = qWR_rotation_matrix.transpose() * Feature::compute_unshifted_3d_position(rW, yi);
+	p_from_cam_perspective = qWR_rotation_matrix.transpose() * Feature::compute_unrotated_hc(rW, yi);
 
-	//project
+	//project p into the undistorted projection plane:
 	Eigen::Vector2d uvu;
-	cam.project_p_to_uvu(p_from_cam_perspective, uvu);//
+	cam.project_p_to_uvu(p_from_cam_perspective, uvu);
 
 	Eigen::Vector2d uvd;
 	cam.distort(uvu, uvd);
@@ -39,12 +39,12 @@ Eigen::Vector3d Feature::compute_cartesian(const Eigen::VectorXd & yi){
 	double rho = yi(5);
 
 	Eigen::Vector3d mi;
-	Feature::compute_m( theta, phi, mi );
+	Feature::compute_m(theta, phi, mi);
 
 	return yi_rW + (1/rho)*mi;
 }
 
-Eigen::Vector3d Feature::compute_unshifted_3d_position(const Eigen::Vector3d & rW, const Eigen::VectorXd & yi){
+Eigen::Vector3d Feature::compute_unrotated_hc(const Eigen::Vector3d & rW, const Eigen::VectorXd & yi){
 
 	const Eigen::Vector3d & yi_rW = yi.head<3>(); //camera orientation when it was first seen.
 	double theta = yi(3);
@@ -52,7 +52,7 @@ Eigen::Vector3d Feature::compute_unshifted_3d_position(const Eigen::Vector3d & r
 	double rho = yi(5);
 
 	Eigen::Vector3d mi;
-	Feature::compute_m( theta, phi, mi );
+	Feature::compute_m(theta, phi, mi);
 
 	return ((yi_rW - rW)*rho + mi);
 }
@@ -73,15 +73,15 @@ void Feature::compute_H(const Camera & cam, const Eigen::Vector3d & rW, const Ei
 	 */
 	//dh_drw: predicted state in image coordinates(hi) against position (rW)
 	Eigen::Matrix2d dhd_dhu;
-	cam.jacob_undistort( hi, dhd_dhu );
+	cam.jacob_undistort(hi, dhd_dhu);
 	dhd_dhu = dhd_dhu.inverse().eval();
 
 	Eigen::Matrix<double, 2, 3>  dhu_dhrl;
 
-	Eigen::Vector3d hC; //Cartesian point. p = [x y z]', cartesian coord system origin is current camera position (rW, qWR)
-	hC = qWR_rotation_matrix.inverse() * Feature::compute_unshifted_3d_position(rW, yi);
+	Eigen::Vector3d hc; //Cartesian point from current camera perspective. hc = [x y z]', cartesian coord system origin is current camera position (rW, qWR)
+	hc = qWR_rotation_matrix.inverse() * Feature::compute_unrotated_hc(rW, yi);
 
-	cam.jacob_project_p_to_uvu(hC, dhu_dhrl);
+	cam.jacob_project_p_to_uvu(hc, dhu_dhrl);
 
 	Eigen::Matrix3d dhrl_drw = - qWR_rotation_matrix_inverse * yi(5);
 
@@ -94,7 +94,7 @@ void Feature::compute_H(const Camera & cam, const Eigen::Vector3d & rW, const Ei
 	Eigen::Matrix<double, 3, 4> dRq_times_a_by_dq;
 	Eigen::Vector4d qbar;
 	MotionModel::qconj(qWR, qbar);
-	MotionModel::dposw_dq(Feature::compute_unshifted_3d_position(rW, yi), qbar, dRq_times_a_by_dq);
+	MotionModel::dposw_dq(Feature::compute_unrotated_hc(rW, yi), qbar, dRq_times_a_by_dq);
 	Eigen::Matrix4d dqbar_by_dq = Eigen::Vector4d(1,-1,-1,-1).asDiagonal();
 
 	dhrl_dqwr = dRq_times_a_by_dq * dqbar_by_dq;
