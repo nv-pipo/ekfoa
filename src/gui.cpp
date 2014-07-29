@@ -213,6 +213,21 @@ bool Gui::redraw(){
 
     //Draw surface:
     draw_surface();
+
+    //Draw grid:
+    glColor4f(0.5, 0.5, 0.5, 0.1);
+    glBegin(GL_LINES);
+    for(int x = -10; x <= 10; x++){
+    	glVertex3f(x,2,-10);
+    	glVertex3f(x,2, 10);
+    }
+
+    for(int z = -10; z <= 10; z++){
+    	glVertex3f(-10,2,z);
+    	glVertex3f( 10,2,z);
+    }
+    glEnd();
+
     lock_.unlock();
 
     glfwSwapBuffers(window_);
@@ -250,6 +265,7 @@ void Gui::draw_drone(){
 
 
 void Gui::draw_surface(){
+	//closest point:
 	glPointSize(10.0);
 
 	glColor3f(0, 1.f, 1.f);
