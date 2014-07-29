@@ -111,7 +111,7 @@ void EKFOA::process(const double delta_t, cv::Mat & frame, Eigen::Vector3d & rW,
 
 	//Set the axes orientation and confidence:
 	axes_orientation_and_confidence.setIdentity();//axes_orientation_and_confidence stores in each column one axis (X, Y, Z)
-	axes_orientation_and_confidence *= 2; //make the lines larger, so they are actually informative
+	axes_orientation_and_confidence *= 5; //make the lines larger, so they are actually informative
 	//Apply rotation matrix:
 	Eigen::Matrix3d qWR_R;//Rotation matrix of current orientation quaternion
 	MotionModel::quaternion_matrix(x_k_k.segment<4>(3), qWR_R);
