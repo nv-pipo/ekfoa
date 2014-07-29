@@ -130,7 +130,7 @@ void MotionTrackerOF::process(cv::Mat & input_2, std::vector<Features_extra> & f
 			cv::line(input_2,
 					p1[i],   // initial position
 					p2[i],   // new position
-					cv::Scalar(255, 0, 0));
+					cv::Scalar(255, 255, 0));
 		}
 
 		//Finally, remember the correctly tracked points (for next call):
