@@ -10,7 +10,7 @@ endif(COMMAND cmake_policy)
 set(EXECUTABLE_OUTPUT_PATH bin)
 
 #### Extra flags ####
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GNU_SOURCE -D_REENTRANT -D_EIGEN_MPL2_ONLY -D_NDEBUG -DEIGEN_NO_DEBUG -O3 -fopenmp -fstack-protector -frounding-math")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GNU_SOURCE -D_REENTRANT -D_EIGEN_MPL2_ONLY -D_NDEBUG -DEIGEN_NO_DEBUG -O3 -fopenmp -fstack-protector")
 
 #### PTHREADS ####
 find_package (Threads)
@@ -56,7 +56,7 @@ include_directories(${GLFW_INCLUDE_DIRS})
 
 #### ARM Optimizations ####
 if (CMAKE_SYSTEM_PROCESSOR MATCHES "armv7l")
-   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__ARM_NEON__ -fPIC -march=armv7-a -mfloat-abi=hard -mfpu=neon-vfpv4 -mvectorize-with-neon-quad -mcpu=cortex-a9 -mtune=cortex-a9")
+   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__ARM_NEON__ -fPIC -march=armv7-a -mfloat-abi=hard -mfpu=neon-vfpv4 -mvectorize-with-neon-quad -mcpu=cortex-a9 -mtune=cortex-a9 -frounding-math")
 endif()
 
 #get_cmake_property(_variableNames VARIABLES)
