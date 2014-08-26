@@ -52,53 +52,56 @@ motion_tracker(MotionTrackerOF(
 }
 
 void EKFOA::process(const double delta_t, cv::Mat & frame, Eigen::Vector3d & rW, Eigen::Matrix3d & axes_orientation_and_confidence, std::vector<Point3d> (& XYZs)[3], Delaunay & triangulation, Point3d & closest_point){
-	double time;
+	double time_total;
 	std::vector<cv::Point2f> features_to_add;
 	std::vector<Features_extra> features_extra;
 
 	/*
 	 * EKF prediction (state and measurement prediction)
 	 */
-	time = (double)cv::getTickCount();
+	time_total = (double)cv::getTickCount();
+	double time_prediction = (double)cv::getTickCount();
 	filter.predict_state_and_covariance(delta_t);
 	filter.compute_features_h(cam, features_extra);
-	time = (double)cv::getTickCount() - time;
-	std::cout << "predict = " << time/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
+	time_prediction = (double)cv::getTickCount() - time_prediction;
+	std::cout << "predict = " << time_prediction/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
 
 	/*
 	 * Sense and map management (delete features from EKF)
 	 */
-	time = (double)cv::getTickCount();
+	double time_tracker = (double)cv::getTickCount();
 	motion_tracker.process(frame, features_extra, features_to_add);
 	//TODO: Why is optical flow returning points outside the image???
-	time = (double)cv::getTickCount() - time;
-	std::cout << "tracker = " << time/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
+	time_tracker = (double)cv::getTickCount() - time_tracker;
+
+	time_total = time_total + time_tracker; //do not count the time spent by the tracker
 
 	//Delete no longer seen features from the state, covariance matrix and the features_extra:
-	time = (double)cv::getTickCount();
+	double time_del = (double)cv::getTickCount();
 	filter.delete_features(features_extra);
-	time = (double)cv::getTickCount() - time;
-	std::cout << "delete = " << time/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
+	time_del = (double)cv::getTickCount() - time_del;
+	std::cout << "delete  = " << time_del/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
 
 	/*
 	 * EKF Update step and map management (add new features to EKF)
 	 */
-	time = (double)cv::getTickCount();
+	double time_update = (double)cv::getTickCount();
 	filter.update(cam, features_extra);
-	time = (double)cv::getTickCount() - time;
-	std::cout << "update = " << time/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
+	time_update = (double)cv::getTickCount() - time_update;
+	std::cout << "update  = " << time_update/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
+
 
 	//Add new features
-	time = (double)cv::getTickCount();
+	double time_add = (double)cv::getTickCount();
 	filter.add_features_inverse_depth(cam, features_to_add);
-	time = (double)cv::getTickCount() - time;
-	std::cout << "add_features = " << time/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
+	time_add = (double)cv::getTickCount() - time_add;
+	std::cout << "add_fea = " << time_add/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
 
 
 	/*
 	 * Triangulation, surface and GUI data setting:
 	 */
-	time = (double)cv::getTickCount();
+	double time_triangulation = (double)cv::getTickCount();
 
 	std::vector< std::pair<Point2d, size_t> > triangle_list;
 	std::list<Triangle> triangles_list_3d;
@@ -191,6 +194,16 @@ void EKFOA::process(const double delta_t, cv::Mat & frame, Eigen::Vector3d & rW,
 //		FT sqd = tree.squared_distance(point_query);
 	}
 
-	time = (double)cv::getTickCount() - time;
-	std::cout << "obstacle avoidance = " << time/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
+
+	//remember this position
+	last_position = rW;
+	std::cout << "certaint= " << p_k_k.diagonal().sum() << "ms" << std::endl;
+
+	time_triangulation = (double)cv::getTickCount() - time_triangulation;
+	std::cout << "Triang  = " << time_triangulation/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
+
+	time_total = (double)cv::getTickCount() - time_total;
+	std::cout << "EKF     = " << time_total/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
+
+	std::cout << "tracker = " << time_tracker/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
 }
