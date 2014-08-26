@@ -10,7 +10,7 @@ endif(COMMAND cmake_policy)
 set(EXECUTABLE_OUTPUT_PATH bin)
 
 #### Extra flags ####
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GNU_SOURCE -D_REENTRANT -D_NDEBUG -D_EIGEN_NO_DEBUG -O3 -fopenmp -fstack-protector")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GNU_SOURCE -D_REENTRANT -D_NDEBUG -D_EIGEN_NO_DEBUG -O3 -fstack-protector")
 
 #### PTHREADS ####
 find_package (Threads)
