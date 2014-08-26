@@ -11,11 +11,13 @@ void ekfoa(){
 	cv::Mat frame;
 	//Sequence path and initial image
 //	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/ekfmonoslam/rawoutput";
-	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/1394/downsample/img";
-//	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/ardrone/held_indoors2/img";
+//	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/1394/downsample/img";
+//	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/ardrone/wall/img";
+	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/ardrone/rotation/img";
+//	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/ardrone/corridor_1/img";
 //	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/ardrone/fly_indoors/img";
-	int initIm = 0;
-	int lastIm = 2000;
+	int initIm = 50;
+	int lastIm = 408;
 	double delta_t = 1; //TODO: take time delta from timestamp of when the image was taken
 
 	char file_path[255]; // enough to hold all numbers up to 64-bits
