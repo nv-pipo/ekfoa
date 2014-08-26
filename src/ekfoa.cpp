@@ -192,12 +192,22 @@ void EKFOA::process(const double delta_t, cv::Mat & frame, Eigen::Vector3d & rW,
 		Point3d point_query(rW[0], rW[1], rW[2]);
 		closest_point = tree.closest_point(point_query);
 //		FT sqd = tree.squared_distance(point_query);
+
+		Eigen::Vector3d last_displacement_vector = last_position - rW;
+
+//		double repealing_force = 0;
+//		if (std::sqrt(sqd) < 0.2){
+//			std::cout << "can crash! " << std::endl;
+//			repealing_force = 1/std::sqrt(sqd);
+//		}
+//		std::cout << "distance = [distance, " << std::sqrt(sqd) << "];" << std::endl;
+//		std::cout << "repealing_force = [repealing_force, " << repealing_force << "];" << std::endl;
 	}
 
 
 	//remember this position
 	last_position = rW;
-	std::cout << "certaint= " << p_k_k.diagonal().sum() << "ms" << std::endl;
+	std::cout << "certaint= " << p_k_k.diagonal().sum() << std::endl;
 
 	time_triangulation = (double)cv::getTickCount() - time_triangulation;
 	std::cout << "Triang  = " << time_triangulation/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
