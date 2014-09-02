@@ -3,8 +3,14 @@
 boost::mutex Gui::lock_;
 
 Arcball Gui::arcball_;
-GLfloat Gui::zoom_ = 0.5f;
+GLfloat Gui::zoom_ = 2.0f;
 GLboolean Gui::is_rotating_ = GL_FALSE;
+GLboolean Gui::should_draw_surface_ = GL_FALSE;
+GLboolean Gui::should_draw_depth_ = GL_TRUE;
+GLboolean Gui::should_draw_closest_point_ = GL_FALSE;
+GLboolean Gui::should_draw_trajectory_ = GL_FALSE;
+Eigen::Vector3d Gui::model_displacement_ (0, 0, 0);
+Eigen::Vector4d Gui::model_orientation_ (0, 0, 0, 0);
 
 Delaunay Gui::triangulation_;
 Point3d Gui::closest_point_;
@@ -80,18 +86,26 @@ void Gui::error_callback(int error, const char* description){
 // Handle key strokes
 //========================================================================
 
-void Gui::key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
-{
-//    if (action != GLFW_PRESS)
-//        return;
-//
-//    switch (key) {
-//        case GLFW_KEY_ESCAPE:
-//            glfwSetWindowShouldClose(window, GL_TRUE);
-//            break;
-//        default:
-//            break;
-//    }
+void Gui::key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    if (action != GLFW_PRESS)
+        return;
+
+    switch (key) {
+        case GLFW_KEY_S:
+        	should_draw_surface_ = ! should_draw_surface_;
+            break;
+        case GLFW_KEY_D:
+        	should_draw_depth_ = ! should_draw_depth_;
+            break;
+        case GLFW_KEY_C:
+        	should_draw_closest_point_ = ! should_draw_closest_point_;
+            break;
+        case GLFW_KEY_T:
+        	should_draw_trajectory_ = ! should_draw_trajectory_;
+            break;
+        default:
+            break;
+    }
 }
 
 
@@ -161,7 +175,7 @@ void Gui::framebuffer_size_callback(GLFWwindow* window, int width, int height){
 }
 
 
-void Gui::update_draw_parameters(const std::list<Eigen::Vector3d> & trajectory, const Eigen::Matrix3d & axes_orientation_and_confidence, std::vector<Point3d> (& XYZs)[3], Delaunay & triangulation, Point3d & closest_point){
+void Gui::update_draw_parameters(const std::list<Eigen::Vector3d> & trajectory, const Eigen::Vector4d & orientation, const Eigen::Matrix3d & axes_orientation_and_confidence, std::vector<Point3d> (& XYZs)[3], Delaunay & triangulation, Point3d & closest_point){
 	//lock
 	lock_.lock();
 
@@ -176,6 +190,8 @@ void Gui::update_draw_parameters(const std::list<Eigen::Vector3d> & trajectory, 
 	triangulation_ = triangulation;
 
 	closest_point_ = closest_point;
+
+	model_orientation_ = orientation;
 
     //unlock
     lock_.unlock();
@@ -208,14 +224,23 @@ bool Gui::redraw(){
 
     arcball_.applyRotationMatrix();
 
+    //Displace the center of the model:
+    glTranslatef(-trajectory_.back()(0), 0, -trajectory_.back()(2) - .5);
+
+    //Draw the closest point
+    if (should_draw_closest_point_) draw_closest_point();
+
     //Draw "drone":
+    if (should_draw_trajectory_) draw_trajectory();
     draw_drone();
 
-    //Draw surface:
-    draw_surface();
+    //Draw depth and surface:
+    if (should_draw_depth_) draw_depth();
+    if (should_draw_surface_) draw_surface();
 
     //Draw grid:
     glColor4f(0.5, 0.5, 0.5, 0.1);
+    glLineWidth(1.0);
     glBegin(GL_LINES);
     for(int x = -10; x <= 10; x++){
     	glVertex3f(x,2,-10);
@@ -237,7 +262,7 @@ bool Gui::redraw(){
     return true;
 }
 
-void Gui::draw_drone(){
+void Gui::draw_trajectory(){
     //Draw trajectory:
     glPointSize(0.5);
     glColor4f(0.7, 0.7, 0.7, 0.2);
@@ -246,7 +271,8 @@ void Gui::draw_drone(){
     	glVertex3f((*pos)(0), (*pos)(1), (*pos)(2));
     }
     glEnd();
-
+}
+void Gui::draw_drone(){
     //Draw the camera position/orientation, where the length of each axis is proportional to its confidence (comes from the covariance matrix)
     glLineWidth(3.0);
     glBegin(GL_LINES);
@@ -264,7 +290,7 @@ void Gui::draw_drone(){
 }
 
 
-void Gui::draw_surface(){
+void Gui::draw_closest_point(){
 	//closest point:
 	glPointSize(10.0);
 
@@ -273,7 +299,9 @@ void Gui::draw_surface(){
 	glVertex3f(closest_point_.x(), closest_point_.y(), closest_point_.z());
 
 	glEnd();
+}
 
+void Gui::draw_depth(){
 	//Points
 	glPointSize(4.0);
 
@@ -295,7 +323,9 @@ void Gui::draw_surface(){
 		glVertex3f(XYZs_[2][i].x(), XYZs_[2][i].y(), XYZs_[2][i].z()); // [2]==far
 	}
 	glEnd();
+}
 
+void Gui::draw_surface(){
 	//surface:
 	glColor3f(0.6, 0.4, 0.7);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);

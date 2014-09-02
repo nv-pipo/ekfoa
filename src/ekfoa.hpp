@@ -52,7 +52,7 @@ private:
 	Eigen::Vector3d last_position;
 public:
 	EKFOA();
-	void process(const double delta_t, cv::Mat & frame, Eigen::Vector3d & position, Eigen::Matrix3d & axes_orientation_and_confidence, std::vector<Point3d> (& XYZs)[3], Delaunay & triangulation, Point3d & closest_point);
+	void process(const double delta_t, cv::Mat & frame, Eigen::Vector3d & position, Eigen::Vector4d & orientation, Eigen::Matrix3d & axes_orientation_and_confidence, std::vector<Point3d> (& XYZs)[3], Delaunay & triangulation, Point3d & closest_point);
 	const Kalman & kalman_filter() const { return filter; }
 };
 

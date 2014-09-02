@@ -98,7 +98,7 @@ void Arcball::applyRotationMatrix()
 
          // rotate around the current position
          applyTranslationMatrix(true);
-         glRotatef(rotationAngle * 2, -rotationAxis.x(),  -rotationAxis.y(),-rotationAxis.z());
+         glRotatef(rotationAngle * 2, -rotationAxis.x(), -rotationAxis.y(), -rotationAxis.z());
          applyTranslationMatrix(false);
       }
    }
@@ -181,7 +181,6 @@ void Arcball::reset()
    transX = transY = 0;
    startTransX = startTransY = currentTransX = currentTransY = 0;
 }
-
 
 const float Arcball::INITIAL_FOV = 30;
 const float Arcball::TRANSLATION_FACTOR = 0.01f;

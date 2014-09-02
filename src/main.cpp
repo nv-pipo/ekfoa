@@ -12,11 +12,12 @@ void ekfoa(){
 	//Sequence path and initial image
 //	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/ekfmonoslam/rawoutput";
 //	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/1394/downsample/img";
-//	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/ardrone/wall/img";
-	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/ardrone/rotation/img";
+	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/ardrone/wall/img";
+//	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/ardrone/rotation/img";
 //	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/ardrone/corridor_1/img";
-//	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/ardrone/fly_indoors/img";
-	int initIm = 50;
+//	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/ardrone/held_indoors/img";
+//	std::string sequence_prefix = std::string(getpwuid(getuid())->pw_dir) + "/btsync/capture_samples/monoSLAM/ardrone/held_indoors2/img";
+	int initIm = 39;
 	int lastIm = 408;
 	double delta_t = 1; //TODO: take time delta from timestamp of when the image was taken
 
@@ -41,14 +42,38 @@ void ekfoa(){
 		Delaunay triangulation;
 		Point3d closest_point;
 		Eigen::Vector3d position;
+		Eigen::Vector4d orientation;
 		//Add a space for the current position in the trajectory list:
-		ekfoa.process(delta_t, frame, position, axes_orientation_and_confidence, XYZs, triangulation, closest_point);
+		ekfoa.process(delta_t, frame, position, orientation, axes_orientation_and_confidence, XYZs, triangulation, closest_point);
 		trajectory.push_back(position);
+
+		//get the angle around the Y axis:
+//		double x,y,z,w;
+//		w = orientation(0);
+//		x = orientation(1);
+//		y = orientation(2);
+//		z = orientation(3);
+//
+//		double h = atan2(2*y*w-2*x*z , 1 - 2*y*y - 2*z*z);
+//		double a = asin(2*(x*y + z*w));
+//		double b = atan2(2*x*w-2*y*z , 1 - 2*x*x - 2*z*z);
+//
+//		if (x*y + z*w == 0.5){
+//		   h = 2 * atan2(x,w);
+//		   b = 0;
+//		} else if (x*y + z*w == -0.5){
+//		   h = -2 * atan2(x,w);
+//		   b = 0;
+//		}
+//
+//		std::cout << "h: " << h << std::endl;
+//		std::cout << "a: " << a << std::endl;
+//		std::cout << "b: " << b << std::endl;
 
 		//Show the processed frame:
 		cv::imshow("Camera input", frame);
 
-		Gui::update_draw_parameters(trajectory, axes_orientation_and_confidence, XYZs, triangulation, closest_point);
+		Gui::update_draw_parameters(trajectory, orientation, axes_orientation_and_confidence, XYZs, triangulation, closest_point);
 		//PAUSE:
 		std::cin.ignore(1);
 	}

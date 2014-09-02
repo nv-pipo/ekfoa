@@ -51,7 +51,7 @@ motion_tracker(MotionTrackerOF(
 
 }
 
-void EKFOA::process(const double delta_t, cv::Mat & frame, Eigen::Vector3d & rW, Eigen::Matrix3d & axes_orientation_and_confidence, std::vector<Point3d> (& XYZs)[3], Delaunay & triangulation, Point3d & closest_point){
+void EKFOA::process(const double delta_t, cv::Mat & frame, Eigen::Vector3d & rW, Eigen::Vector4d & qWR, Eigen::Matrix3d & axes_orientation_and_confidence, std::vector<Point3d> (& XYZs)[3], Delaunay & triangulation, Point3d & closest_point){
 	double time_total;
 	std::vector<cv::Point2f> features_to_add;
 	std::vector<Features_extra> features_extra;
@@ -64,7 +64,7 @@ void EKFOA::process(const double delta_t, cv::Mat & frame, Eigen::Vector3d & rW,
 	filter.predict_state_and_covariance(delta_t);
 	filter.compute_features_h(cam, features_extra);
 	time_prediction = (double)cv::getTickCount() - time_prediction;
-	std::cout << "predict = " << time_prediction/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
+//	std::cout << "predict = " << time_prediction/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
 
 	/*
 	 * Sense and map management (delete features from EKF)
@@ -80,7 +80,7 @@ void EKFOA::process(const double delta_t, cv::Mat & frame, Eigen::Vector3d & rW,
 	double time_del = (double)cv::getTickCount();
 	filter.delete_features(features_extra);
 	time_del = (double)cv::getTickCount() - time_del;
-	std::cout << "delete  = " << time_del/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
+//	std::cout << "delete  = " << time_del/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
 
 	/*
 	 * EKF Update step and map management (add new features to EKF)
@@ -88,14 +88,14 @@ void EKFOA::process(const double delta_t, cv::Mat & frame, Eigen::Vector3d & rW,
 	double time_update = (double)cv::getTickCount();
 	filter.update(cam, features_extra);
 	time_update = (double)cv::getTickCount() - time_update;
-	std::cout << "update  = " << time_update/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
+//	std::cout << "update  = " << time_update/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
 
 
 	//Add new features
 	double time_add = (double)cv::getTickCount();
 	filter.add_features_inverse_depth(cam, features_to_add);
 	time_add = (double)cv::getTickCount() - time_add;
-	std::cout << "add_fea = " << time_add/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
+//	std::cout << "add_fea = " << time_add/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
 
 
 	/*
@@ -117,7 +117,8 @@ void EKFOA::process(const double delta_t, cv::Mat & frame, Eigen::Vector3d & rW,
 	axes_orientation_and_confidence *= 5; //make the lines larger, so they are actually informative
 	//Apply rotation matrix:
 	Eigen::Matrix3d qWR_R;//Rotation matrix of current orientation quaternion
-	MotionModel::quaternion_matrix(x_k_k.segment<4>(3), qWR_R);
+	qWR = x_k_k.segment<4>(3);
+	MotionModel::quaternion_matrix(qWR, qWR_R);
 	axes_orientation_and_confidence.applyOnTheLeft(qWR_R); // == R * axes_orientation_and_confidence
 	for (int axis=0 ; axis<axes_orientation_and_confidence.cols() ; axis++){
 		//Set the length to be 3*sigma:
@@ -207,13 +208,13 @@ void EKFOA::process(const double delta_t, cv::Mat & frame, Eigen::Vector3d & rW,
 
 	//remember this position
 	last_position = rW;
-	std::cout << "certaint= " << p_k_k.diagonal().sum() << std::endl;
+//	std::cout << "certaint= " << p_k_k.diagonal().sum() << std::endl;
 
 	time_triangulation = (double)cv::getTickCount() - time_triangulation;
-	std::cout << "Triang  = " << time_triangulation/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
+//	std::cout << "Triang  = " << time_triangulation/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
 
 	time_total = (double)cv::getTickCount() - time_total;
-	std::cout << "EKF     = " << time_total/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
+//	std::cout << "EKF     = " << time_total/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
 
-	std::cout << "tracker = " << time_tracker/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
+//	std::cout << "tracker = " << time_tracker/((double)cvGetTickFrequency()*1000.) << "ms" << std::endl;
 }

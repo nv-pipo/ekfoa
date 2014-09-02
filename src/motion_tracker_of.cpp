@@ -32,15 +32,15 @@ void MotionTrackerOF::process(cv::Mat & input_2, std::vector<Features_extra> & f
 	cv::cvtColor(input_2, input_2_gray, CV_RGB2GRAY);
 
 	//If there are any features to track:
-	if (points_tracked_1.size() > 0) {
+	if (points_tracked_1.size() > 15) {
 //		time = (double)cv::getTickCount();
 
 		//Copy the predicted feature location to the OF points_tracked_2, it will try to find the feature appearance around the copied point.
-		points_tracked_2.resize(features_extra.size());
-		for (size_t i=0 ; i<features_extra.size() ; i++){
-			points_tracked_2[i].x = features_extra[i].h(0);
-			points_tracked_2[i].y = features_extra[i].h(1);
-		}
+//		points_tracked_2.resize(features_extra.size());
+//		for (size_t i=0 ; i<features_extra.size() ; i++){
+//			points_tracked_2[i].x = features_extra[i].h(0);
+//			points_tracked_2[i].y = features_extra[i].h(1);
+//		}
 
 		//TODO: Use 'OPTFLOW_USE_INITIAL_FLOW' with the kalman filter prediction. So that the estimations are considered the initial estimate
 		// Find position of feature in new image
@@ -51,9 +51,9 @@ void MotionTrackerOF::process(cv::Mat & input_2, std::vector<Features_extra> & f
 				status_of_,                  // output status vector (of unsigned chars)
 				err,                          // output vector of errors
 				cv::Size(21,21),
-				3,
-				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 0.01),
-				cv::OPTFLOW_USE_INITIAL_FLOW
+				3//,
+//				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 0.01),
+//				cv::OPTFLOW_USE_INITIAL_FLOW
 		);
 		//Use the same images in reverse order to verify that the points we got in the previous OpticFlow were correct
 		cv::calcOpticalFlowPyrLK(

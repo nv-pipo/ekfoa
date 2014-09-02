@@ -54,7 +54,7 @@ public:
 	static bool redraw();
 	static void init();
 	static void release();
-	static void update_draw_parameters(const std::list<Eigen::Vector3d> & trajectory, const Eigen::Matrix3d & position_orientation_confidence, std::vector<Point3d> (& XYZs)[3], Delaunay & triangulation, Point3d & closest_point);
+	static void update_draw_parameters(const std::list<Eigen::Vector3d> & trajectory, const Eigen::Vector4d & orientation, const Eigen::Matrix3d & position_orientation_confidence, std::vector<Point3d> (& XYZs)[3], Delaunay & triangulation, Point3d & closest_point);
 
 private:
 	static boost::mutex lock_;
@@ -62,6 +62,12 @@ private:
 	static Arcball arcball_;
 	static GLfloat zoom_;
 	static GLboolean is_rotating_;
+	static GLboolean should_draw_surface_;
+	static GLboolean should_draw_depth_;
+	static GLboolean should_draw_closest_point_;
+	static GLboolean should_draw_trajectory_;
+	static Eigen::Vector3d model_displacement_;
+	static Eigen::Vector4d model_orientation_;
 
 	static Delaunay triangulation_;
 	static Point3d closest_point_;
@@ -73,7 +79,10 @@ private:
 	static std::vector<Point3d> XYZs_[3];// for positions of 'mu', 'close' and 'far'
 
 
+	static void draw_closest_point();
+	static void draw_trajectory();
 	static void draw_drone();
+	static void draw_depth();
 	static void draw_surface();
 	static void error_callback(int error, const char* description);
 	static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
